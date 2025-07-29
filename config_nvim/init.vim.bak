@@ -1,0 +1,142 @@
+" Neovim configuration file: ~/.config/nvim/init.vim
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => General
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Sets how many lines of history VIM has to remember
+set history=500
+
+" Enable filetype plugins
+filetype plugin on
+filetype indent on
+
+" Set to auto read when a file is changed from the outside
+set autoread
+au FocusGained,BufEnter * checktime
+
+"Always show current position
+set ruler
+
+" Ignore case when searching
+set ignorecase
+
+" When searching try to be smart about cases
+set smartcase
+
+" Highlight search results
+set hlsearch
+
+" For regular expressions turn magic on
+set magic
+
+" No annoying sound on errors
+set noerrorbells
+set novisualbell
+set t_vb=
+" set tm=500 " This sets timeoutlen, affecting key press timings.
+             " You might want to keep it if you understand its effect,
+             " or remove if unsure. Default is 1000ms.
+
+" Properly disable sound on errors on MacVim
+" This block is MacVim specific. It won't harm Neovim, but it's not needed
+" if you're only using Neovim or a different GUI.
+" You can comment it out or remove it.
+" if has("gui_macvim")
+"     autocmd GUIEnter * set vb t_vb=
+" endif
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Colors and Fonts
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Enable syntax highlighting
+syntax on
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Text, tab and indent related
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Use spaces instead of tabs
+set expandtab
+
+" Be smart when using tabs ;)
+set smarttab
+
+" 1 tab == 4 spaces
+set shiftwidth=4
+set tabstop=4
+
+" Linebreak on 500 characters (Note: 'tw' is textwidth, 'lbr' is linebreak)
+" 'lbr' breaks at 'textwidth' if 'wrap' is set, but only at word boundaries.
+set lbr
+set tw=500 " Sets text width to 500 characters. This is very wide.
+           " Common values are 80 or 120. Adjust to your preference.
+
+set ai "Auto indent
+set si "Smart indent
+set wrap "Wrap lines
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => FZF
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Add FZF to runtime path if installed via Homebrew (or other manual method)
+" Ensure this path is correct for your FZF installation.
+set rtp+=/opt/homebrew/opt/fzf
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Plugins with vim-plug
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+call plug#begin() " Default Neovim plugin dir: stdpath('data') . '/plugged'
+
+" LSP Client - consider Neovim's built-in LSP in the future
+Plug 'prabirshrestha/vim-lsp'
+
+" Snippets
+Plug 'SirVer/ultisnips'
+Plug 'honza/vim-snippets' " Snippet definitions for UltiSnips
+
+" File Explorer
+Plug 'scrooloose/nerdtree', { 'on': 'NERDTreeToggle' } " Load on demand
+
+" Theme
+Plug 'maxmx03/dracula.nvim'
+
+call plug#end()
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Colorscheme
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Important: Set the colorscheme *after* syntax on and after plugins are loaded.
+if exists('g:colors_name')
+  highlight clear
+endif
+if has('termguicolors')
+  set termguicolors " Enable true colors in compatible terminals
+endif
+colorscheme dracula
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Plugin Specific Configurations (Example for NERDTree)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Example: Add a keymap for NERDTree
+" nnoremap <leader>n :NERDTreeToggle<CR>
+" You'll need to define a leader key, e.g.:
+" let mapleader = "\<Space>"
+" let maplocalleader = "\<Space>"
+
+" Example: UltiSnips trigger keys (if defaults are not desired)
+" let g:UltiSnipsExpandTrigger="<tab>"
+" let g:UltiSnipsJumpForwardTrigger="<c-j>"
+" let g:UltiSnipsJumpBackwardTrigger="<c-k>"
+
+" You might want to add configurations for vim-lsp here,
+" for example, registering language servers.
+" Refer to vim-lsp documentation.
+" Example (conceptual, you'll need actual server commands):
+" if executable('pylsp')
+"    au User lsp_setup call lsp#register_server({
+"        \ 'name': 'pylsp',
+"        \ 'cmd': {server_info->['pylsp']},
+"        \ 'whitelist': ['python'],
+"        \ })
+" endif
+
+

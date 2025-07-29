@@ -1,0 +1,17 @@
+# https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port#enabling-ssh-connections-over-https
+Host github.com
+  HostName ssh.github.com
+  Port 443
+  User git
+  UpdateHostKeys yes
+  IdentityFile ~/.ssh/xxx
+
+# Main wildcard ruleset
+Host *
+  User xxx
+  AddKeysToAgent yes
+  UseKeychain yes
+  ServerAliveInterval 60
+  ChallengeResponseAuthentication no
+  StrictHostKeyChecking accept-new
+  ExitOnForwardFailure yes

@@ -1,11 +1,11 @@
 [user]
-	name = Xxx Xxx
-	email = xxx@example.com
+	name = XXX XXX
+	email = XXX@example.com
 [core]
-	excludesfile = /Users/xxx/.gitignore_global
+	excludesfile = /Users/XXX/.gitignore_global
 	editor = nvim
 [commit]
-	template = /Users/xxx/.stCommitMsg
+	template = /Users/XXX/.stCommitMsg
 [alias]
 	s = status
 	b = branch

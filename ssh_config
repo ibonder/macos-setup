@@ -6,6 +6,13 @@ Host github.com
   UpdateHostKeys yes
   IdentityFile ~/.ssh/xxx
 
+# Some group of hosts
+Host example-1
+  HostName xxx.xxx.xxx.xxx
+  User ubuntu
+  IdentitiesOnly yes
+  IdentityFile ~/.ssh/id_ed25519
+
 # Main wildcard ruleset
 Host *
   User xxx

@@ -65,6 +65,7 @@ alias netoff='networksetup -setairportpower en0 off'
 alias neton='networksetup -setairportpower en0 on'
 alias netrestart='networksetup -setairportpower en0 off && networksetup -setairportpower en0 on'
 
-alias tfc='find ~/Documents/xxx/environment-state -type f -name ".terraform.lock.hcl" -delete -o -type d -name ".terragrunt-cache" -exec rm -rf {} +'
+# Clean up terraform state files and terragrunt cache
+alias tfc='find ~/Documents/XXX/environment-state -type f -name ".terraform.lock.hcl" -delete -o -type d -name ".terragrunt-cache" -exec rm -rf {} +'
 
 alias tailscale='/Applications/Tailscale.app/Contents/MacOS/Tailscale'

@@ -5,6 +5,9 @@ set -xeo pipefail
 # --- Setting up everything in fresh macOS install ---
 # DO NOT TREAT THIS AS A REAL SCRIPT, IT IS JUST A TEMPLATE FOR OWN USE
 
+# Install Chrome
+# https://www.google.com/chrome/
+
 # Install Iterm2
 # https://iterm2.com/downloads/stable/latest
 
@@ -14,14 +17,12 @@ set -xeo pipefail
 # Install Notion
 # https://www.notion.so/desktop
 
-# Install Chrome
-# https://www.google.com/chrome/
-
 # Install Rosetta 2 for Apple Silicon Macs
 sudo softwareupdate --install-rosetta
 
 # Install Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo "export PATH=/opt/homebrew/bin:$PATH" >> ~/.zshrc
 
 # Install Iterm shell integration
 curl -L https://iterm2.com/shell_integration/install_shell_integration_and_utilities.sh | bash
@@ -40,12 +41,13 @@ brew bundle install --file=~/Brewfile
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # Configure oh-my-zsh
+brew install git
 git clone https://github.com/TamCore/autoupdate-oh-my-zsh-plugins $ZSH_CUSTOM/plugins/autoupdate
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 brew install zsh-syntax-highlighting
 
 # Install pure prompt for zsh
-npm install --global pure-prompt
+brew install pure
 
 # Copy TerminalStuff from external disk to Downloads
 mv Downloads/TerminalStuff/config_nvim ~/.config/.nvim

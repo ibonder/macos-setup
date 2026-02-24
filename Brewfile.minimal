@@ -1,0 +1,19 @@
+# Clone of cat(1) with syntax highlighting and Git integration
+brew "bat"
+# Command-line fuzzy finder written in Go
+brew "fzf"
+# Distributed revision control system
+brew "git"
+# Helps you navigate your file system faster by learning your habits
+brew "jump"
+# Open-source, cross-platform JavaScript runtime environment
+brew "node"
+# Pretty, minimal and fast ZSH prompt
+brew "pure"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.14"
+# Programmatically correct mistyped console commands
+brew "thefuck"
+# Fish shell like syntax highlighting for zsh
+brew "zsh-syntax-highlighting"
+cask "font-meslo-for-powerline"

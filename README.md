@@ -20,7 +20,7 @@ through the list below — `grep -rn 'xxx\|XXX\|example\.com' .` finds every spo
 
 | File | Destination | What to replace |
 | --- | --- | --- |
-| `config_company/env` | `~/.config/company/env` | `COMPANY_LDAP_USER`, `COMPANY_LDAP_PASS` — your LDAP/SSO login. Everything else in the file derives from these two. `chmod 600` after copying. |
+| `config_company/env` | `~/.config/company/env` | Nothing in the file itself — it reads the credential from the macOS keychain. Create the item once: `security add-generic-password -U -s company-ldap -a '<your-ldap-username>' -w` (prompts for the password, so it never lands in argv or shell history). |
 | `aws_config` | `~/.aws/config` | `sso_start_url` (`https://xxx.awsapps.com/start`), every `sso_account_id` (12-digit account IDs), and the `sso_role_name` permission sets you're actually granted. |
 | `gitconfig` | `~/.gitconfig` | `user.name`, `user.email`, and the `/Users/XXX/` paths in `core.excludesfile` and `commit.template`. |
 | `ssh_config` | `~/.ssh/config` | `IdentityFile ~/.ssh/xxx` (key filenames), `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. |
@@ -56,10 +56,22 @@ Measured on this machine, so the numbers have a basis:
 
 ## Zsh startup notes
 
-Startup went ~350ms → ~210ms. Where the remaining time goes, best-of-5 each:
-oh-my-zsh core (libs + `compinit`) **90ms**, all plugins together **+40ms**,
-everything else in `zshrc` **+80ms**. The 90ms is oh-my-zsh's floor — it always
-runs `compinit` itself.
+Startup went ~350ms → ~233ms. Measured as a 20-run average (`time -p` alone has
+only 10ms resolution, which is too coarse here). Where it goes now:
+
+| | cost |
+| --- | --- |
+| bare `zsh -f` | 11ms |
+| oh-my-zsh core (13 libs + `compinit`) | ~91ms |
+| all 18 plugins together | ~18ms |
+| keychain lookup for LDAP creds | ~26ms |
+| everything else in `zshrc` | ~87ms |
+
+Two things worth knowing about that table. Plugins are cheap — pruning them is
+not where the time is, so keep the ones you use. And oh-my-zsh's ~91ms is a
+**floor**: it sources everything synchronously. Getting under ~150ms means
+replacing it with a deferred loader (`zsh-defer`, zinit turbo mode), which is a
+migration rather than a tweak.
 
 A few non-obvious things in `zshrc` that are easy to "clean up" and thereby
 break or slow down:
@@ -74,6 +86,30 @@ break or slow down:
   re-dispatches, moves the cost to first use.
 - **`ZSH_DISABLE_COMPFIX=true`** skips oh-my-zsh's `compaudit` pass (~10-20ms).
   Tradeoff: no warning about world-writable completion directories.
+- **A `compinit()` function defined *before* `source $ZSH/oh-my-zsh.sh`.**
+  oh-my-zsh always runs a full `compinit`, whose fpath scan costs ~20ms, and it
+  offers no switch to skip it — but a function defined beforehand survives its
+  `autoload -U compinit`, so the wrapper can add `-C` (trust the cached dump)
+  when the dump is under a day old. Worth ~10ms in context. Tradeoff: a
+  completion installed today isn't seen until the dump ages out; `rm
+  ~/.zcompdump*` forces a rebuild. The freshness check uses `zsh/stat` rather
+  than the widely-copied `[[ -n $dump(#qNmh-24) ]]` idiom, which is **silently
+  broken** — `[[ ]]` performs no filename generation, so that test is always
+  true, and `(#q)` additionally needs `extended_glob`.
+- **`_cached_eval` for `fzf --zsh` and `jump shell`.** Both `eval "$(tool)"`
+  calls forked a binary at every startup (~8ms and ~5ms) to get back static
+  shell code. The helper caches the output under `$ZSH_CACHE_DIR` and
+  regenerates only when the binary is newer than the cache, so a `brew upgrade`
+  still picks up changes.
+- **The keychain lookup costs ~26ms** — one `security` fork. It was ~45ms until
+  `-g` collapsed two calls into one: `-g` prints attributes on stdout and the
+  password on stderr, so merging the streams yields both fields per fork. That
+  cost is the price of keeping the password out of a plaintext file; it can't be
+  made lazy, because `TF_VAR_*` has to be in the environment before `just`
+  spawns terraform in a non-zsh subshell.
+- **Plugins whose binary isn't installed were removed** (`git-flow`,
+  `docker-compose`, `fasd`, `colorize` — the last needs `pygmentize` or
+  `chroma`). They were loading and doing nothing.
 - **No `$(go env GOPATH)`** — that forked `go` on every startup (~10ms) to
   produce `$HOME/go`. Hardcoded as `${GOPATH:-$HOME/go}`, and *appended* to
   PATH, not prepended, so go-installed tools don't shadow brew/asdf ones.

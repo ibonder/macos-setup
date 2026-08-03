@@ -8,6 +8,12 @@ ZSH_THEME=""              # empty: the pure prompt is set up further down
 export UPDATE_ZSH_DAYS=7  # used by the autoupdate plugin
 export ANSIBLE_COW_SELECTION="random"
 
+# Staged startup: `zsh-defer <cmd>` queues <cmd> to run once zle goes idle —
+# after the prompt is on screen, but before your first command executes. Takes
+# <1ms to load and must be sourced before first use. See the deferred block at
+# the bottom of this file for what is moved off the critical path.
+source $ZSH/custom/plugins/zsh-defer/zsh-defer.plugin.zsh
+
 # Skip oh-my-zsh's compaudit/compfix pass over every completion directory.
 # Saves ~10-20ms; the tradeoff is no warning about world-writable comp dirs.
 ZSH_DISABLE_COMPFIX=true
@@ -27,7 +33,6 @@ setopt hist_find_no_dups   # don't show a match twice while searching
 # git-flow, docker-compose, fasd, and colorize (needs pygmentize or chroma).
 plugins=(
   asdf
-  autoupdate
   git
   brew
   common-aliases
@@ -43,8 +48,9 @@ plugins=(
   helm
   terraform
   aws
-  zsh-autosuggestions
 )
+# zsh-autosuggestions is NOT listed above — it is deferred at the bottom of this
+# file, since it only matters once you start typing.
 
 # common-aliases' global alias `P` (pipe to pygmentize) expands the bare `P`
 # arg in omz_urlencode's zparseopts, breaking it when re-sourcing this file.
@@ -95,12 +101,6 @@ _cached_eval() {
   source $cache
 }
 
-_cached_eval jump-init jump jump shell
-
-complete -o nospace -C /opt/homebrew/bin/terraform terraform
-
-test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-
 # NOTE: no `source <(kubectl completion zsh)` — the oh-my-zsh kubectl plugin already
 # generates it once into $ZSH_CACHE_DIR/completions/_kubectl, asynchronously.
 
@@ -130,21 +130,41 @@ export PATH="$HOME/.local/bin:$PATH"
 # Literal path instead of $(go env GOPATH), which forked go on every startup.
 export PATH="$PATH:${GOPATH:-$HOME/go}/bin"
 
-# --- keep these two last, in this order ------------------------------------
-# fzf key bindings + completion. Replaces sourcing
-# /opt/homebrew/Cellar/fzf/*/shell/, whose version-numbered path silently
-# breaks on every fzf upgrade.
-_cached_eval fzf-init fzf fzf --zsh
-# zsh-syntax-highlighting has to wrap every widget defined above it.
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
 # nono sandbox for Claude Code (added 2026-07-13)
 alias claude='nono run --profile claude-k8s -- claude'
+
+# --- deferred ---------------------------------------------------------------
+# Everything below is off the critical path to the prompt. zsh-defer runs these
+# in queue order once zle is idle, which is after the prompt renders but before
+# your first command runs. Aliases, PATH and the prompt stay eager above,
+# because those you can need the instant the prompt appears.
+#
+# Deferred commands run in function scope with LOCAL_OPTIONS, and their output
+# goes to /dev/null unless asked otherwise. Each entry below was checked against
+# that: none has a top-level `setopt`, and syntax-highlighting's non-global
+# `zsh_highlight__aliases` is set and consumed within one sourcing, so function
+# scope is exactly its lifetime.
+
+zsh-defer _cached_eval jump-init jump jump shell
+zsh-defer -c 'complete -o nospace -C /opt/homebrew/bin/terraform terraform'
+[[ -f ${HOME}/.iterm2_shell_integration.zsh ]] &&
+  zsh-defer source "${HOME}/.iterm2_shell_integration.zsh"
 
 # Terraform module registry auth for git.example.com (added 2026-07-30)
 # just init sets TF_CLI_CONFIG_FILE=network-mirror.tfrc, which ignores ~/.terraformrc;
 # this env-var token is honored regardless of the active CLI config file.
-export TF_TOKEN_git_example_com=$(awk '/credentials "git.example.com"/{f=1} f&&/token/{gsub(/.*= *"|"/,"");print;exit}' ~/.terraformrc 2>/dev/null)
+zsh-defer -c 'export TF_TOKEN_git_example_com=$(awk '\''/credentials "git.example.com"/{f=1} f&&/token/{gsub(/.*= *"|"/,"");print;exit}'\'' ~/.terraformrc 2>/dev/null)'
 
-# Company LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_* (added 2026-08-03)
-[[ -f ~/.config/company/env ]] && source ~/.config/company/env
+# LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_* (added 2026-08-03).
+# +2 keeps stderr, so the "keychain item not found" hint is still visible.
+[[ -f ~/.config/company/env ]] && zsh-defer +2 source ~/.config/company/env
+
+# The autoupdate plugin runs `find -L $ZSH_CUSTOM -maxdepth 3 -name .git` at
+# every startup, ~25ms of filesystem work that nothing interactive waits on.
+zsh-defer source $ZSH/custom/plugins/autoupdate/autoupdate.plugin.zsh
+
+# Order matters: fzf defines widgets, autosuggestions wraps widgets, and
+# syntax-highlighting must wrap everything defined before it — so it goes last.
+zsh-defer _cached_eval fzf-init fzf fzf --zsh
+zsh-defer source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+zsh-defer source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

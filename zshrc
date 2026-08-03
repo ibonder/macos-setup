@@ -23,11 +23,12 @@ setopt hist_reduce_blanks  # tidy up whitespace before recording
 setopt hist_save_no_dups   # never write a duplicate to the history file
 setopt hist_find_no_dups   # don't show a match twice while searching
 
+# Dropped because their binary isn't installed, so the plugin did nothing:
+# git-flow, docker-compose, fasd, and colorize (needs pygmentize or chroma).
 plugins=(
   asdf
   autoupdate
   git
-  git-flow
   brew
   common-aliases
   node
@@ -37,20 +38,35 @@ plugins=(
   cp
   macos
   docker
-  docker-compose
   history
   npm
   helm
   terraform
   aws
-  colorize
   zsh-autosuggestions
-  fasd
 )
 
 # common-aliases' global alias `P` (pipe to pygmentize) expands the bare `P`
 # arg in omz_urlencode's zparseopts, breaking it when re-sourcing this file.
 unalias 'P' 2>/dev/null  # quoted: an unquoted P would itself be alias-expanded
+
+# oh-my-zsh always calls a full `compinit`, whose fpath scan costs ~20ms. A
+# function defined here survives its `autoload -U compinit`, so we can add -C
+# (trust the cached dump, skip the scan) whenever the dump is under a day old.
+# Cost: a completion installed today isn't picked up until the dump ages out —
+# run `rm ~/.zcompdump*` to force a rebuild immediately.
+compinit() {
+  unfunction compinit
+  autoload -Uz compinit
+  zmodload zsh/datetime
+  zmodload -F zsh/stat b:zstat
+  local -a s
+  if zstat -A s +mtime "$ZSH_COMPDUMP" 2>/dev/null && (( EPOCHSECONDS - s[1] < 86400 )); then
+    compinit -C "$@"
+  else
+    compinit "$@"
+  fi
+}
 
 source $ZSH/oh-my-zsh.sh
 source ~/.bash_aliases
@@ -67,7 +83,19 @@ typeset -U fpath      # Optinal for oh-my-zsh users
 typeset -U path PATH  # keep PATH free of duplicates as it gets prepended below
 fpath=(~/.zsh/oc $fpath)
 
-eval "$(jump shell)"
+# `eval "$(tool ...)"` forks the tool at every startup just to get static shell
+# code back. Cache it instead, and regenerate only when the binary is newer than
+# the cache (i.e. after a brew upgrade).
+_cached_eval() {
+  local name=$1 bin=$2; shift 2
+  local cache="${ZSH_CACHE_DIR:-$ZSH/cache}/$name.zsh"
+  if [[ ! -s $cache || $commands[$bin] -nt $cache ]]; then
+    "$@" >| $cache 2>/dev/null || { command rm -f $cache; return 1 }
+  fi
+  source $cache
+}
+
+_cached_eval jump-init jump jump shell
 
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
 
@@ -106,7 +134,7 @@ export PATH="$PATH:${GOPATH:-$HOME/go}/bin"
 # fzf key bindings + completion. Replaces sourcing
 # /opt/homebrew/Cellar/fzf/*/shell/, whose version-numbered path silently
 # breaks on every fzf upgrade.
-eval "$(fzf --zsh)"
+_cached_eval fzf-init fzf fzf --zsh
 # zsh-syntax-highlighting has to wrap every widget defined above it.
 source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 

@@ -1,0 +1,50 @@
+# Template for ~/.config/company/env — sourced from ~/.zshrc.
+#
+# Tracked verbatim: no credential lives in this file, so there is nothing to
+# redact and nothing to fill in. Install with:
+#   mkdir -p ~/.config/company && cp config_company/env ~/.config/company/env
+# then create the keychain item as described below.
+#
+# The password is NOT stored here — it lives in the macOS login keychain as a
+# generic password with service "company-ldap". The LDAP username is the keychain
+# item's account field, so one item is the single source of truth.
+#
+# Create / rotate the item (prompts for the password twice, nothing in argv or
+# shell history):
+#   security add-generic-password -U -s company-ldap -a '<ldap-username>' -w
+#
+# Inspect it:  security find-generic-password -s company-ldap
+# Read it:     security find-generic-password -s company-ldap -w
+# Remove it:   security delete-generic-password -s company-ldap
+
+# One `security` call, not two: -g prints the attributes on stdout and the
+# password on stderr, so merging them yields both fields per fork. Each fork
+# costs ~22ms of shell startup, and parsing below is pure zsh (no awk fork).
+_company_kc=$(security find-generic-password -g -s company-ldap 2>&1)
+if [[ -n $_company_kc ]]; then
+  _company_lines=("${(f)_company_kc}")
+  _company_user=${${(M)_company_lines:#*\"acct\"<blob>=*}#*\"acct\"<blob>=\"}
+  _company_user=${_company_user%\"}
+  _company_pass=${${(M)_company_lines:#password: *}#password: \"}
+  _company_pass=${_company_pass%\"}
+fi
+
+if [[ -n $_company_user && -n $_company_pass ]]; then
+  export COMPANY_LDAP_USER=$_company_user
+  export COMPANY_LDAP_PASS=$_company_pass
+
+  # Terraform (vault-* stacks: LDAP auth login)
+  export TF_VAR_ldap_username=$_company_user
+  export TF_VAR_ldap_password=$_company_pass
+
+  # Confluence
+  export CONFLUENCE_USER=$_company_user
+  export CONFLUENCE_PASS=$_company_pass
+else
+  # Leave everything unset rather than exporting empty strings — terraform then
+  # prompts for var.ldap_password instead of failing an LDAP bind with "".
+  print -u2 'company creds: keychain item "company-ldap" not found; run'
+  print -u2 "  security add-generic-password -U -s company-ldap -a '<ldap-username>' -w"
+fi
+
+unset _company_kc _company_lines _company_user _company_pass

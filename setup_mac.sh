@@ -52,9 +52,16 @@ brew install pure
 # Copy TerminalStuff from external disk to Downloads
 mv Downloads/TerminalStuff/config_nvim ~/.config/.nvim
 mkdir ~/.ssh/
-cp Downloads/TerminalStuff/Users/ibondarev/.ssh/* ~/.ssh
+cp Downloads/TerminalStuff/Users/XXX/.ssh/* ~/.ssh
 mv Downloads/TerminalStuff/gitconfig ~/.gitconfig
 mv Downloads/TerminalStuff/terraformrc ~/.terraformrc
 mv Downloads/TerminalStuff/vimrc ~/.vimrc
 mv Downloads/TerminalStuff/zshrc ~/.zshrc
 mv Downloads/TerminalStuff/bash_aliases ~/.bash_aliases
+mv Downloads/TerminalStuff/aws_config ~/.aws/config
+
+# LDAP/SSO credential file sourced by ~/.zshrc — fill in the two values inside,
+# see the "Personal data to fill in" table in README.md
+mkdir -p ~/.config/company
+mv Downloads/TerminalStuff/config_company/env ~/.config/company/env
+chmod 600 ~/.config/company/env

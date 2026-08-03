@@ -1,5 +1,18 @@
 # shellcheck shell=bash
 
+awsp () {
+    export AWS_PROFILE=$(grep -E '^\[profile ' ~/.aws/config | cut -d' ' -f2 | tr -d ']' | fzf)
+}
+
+awsr () {
+  local regions="eu-south-1 eu-central-1"
+  export AWS_REGION=$(echo "$regions" | tr ' ' '\n' | fzf)
+}
+
+awsc () {
+  aws ecr get-login-password --region eu-central-1 | helm registry login --username AWS --password-stdin xxxxxxxxxxxx.dkr.ecr.eu-central-1.amazonaws.com
+}
+
 alias rm="rm -v"
 alias mv="mv -v"
 alias t="terraform"
@@ -34,6 +47,9 @@ function process_fzf() {
 
 }
 
+alias sss="aws ssm start-session --document-name AWS-StartInteractiveCommand --parameters \"command=[\"/bin/bash\"]\" --target"
+alias sts="aws ssm terminate-session --session-id"
+
 alias co="git co"
 alias co-="git co -"
 alias master="git co master"
@@ -58,14 +74,11 @@ function kn() {
 
 alias chrome="open -a 'Google Chrome'"
 
-alias kgno='kubectl get no -L k8s.example.com/nodetype -L k8s.example.com/workertype -L karpenter.sh/nodepool -L kubernetes.io/arch -L karpenter.sh/capacity-type -L topology.kubernetes.io/zone -L node.kubernetes.io/instance-type -L eks.amazonaws.com/nodegroup-image'
+alias kgno='kubectl get nodes -L topology.kubernetes.io/zone'
 alias ksc='kubectl config use-context'
 
 alias netoff='networksetup -setairportpower en0 off'
 alias neton='networksetup -setairportpower en0 on'
 alias netrestart='networksetup -setairportpower en0 off && networksetup -setairportpower en0 on'
-
-# Clean up terraform state files and terragrunt cache
-alias tfc='find ~/Documents/XXX/environment-state -type f -name ".terraform.lock.hcl" -delete -o -type d -name ".terragrunt-cache" -exec rm -rf {} +'
 
 alias tailscale='/Applications/Tailscale.app/Contents/MacOS/Tailscale'

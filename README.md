@@ -56,22 +56,48 @@ Measured on this machine, so the numbers have a basis:
 
 ## Zsh startup notes
 
-Startup went ~350ms → ~233ms. Measured as a 20-run average (`time -p` alone has
-only 10ms resolution, which is too coarse here). Where it goes now:
+**Measure the right thing.** There are two different numbers:
+
+- **total work** — `zsh -i -c exit`, currently ~220ms
+- **time to first prompt (TTFP)** — how long until you can type, currently
+  **~142ms** (range 117-145)
+
+They used to be identical, because everything ran before the prompt. Staged
+startup via `zsh-defer` moved ~100ms off that path, so TTFP dropped while total
+work barely changed. **TTFP is the number you feel; total is the one that's easy
+to measure.** Don't optimise the wrong one — and note that `zsh -i -c exit`
+cannot verify deferred code at all, because without zle the defer queue never
+drains. Use a pty:
+
+```zsh
+# probe/.zshrc: wrap ~/.zshrc, print elapsed time at the first prompt, exit
+zmodload zsh/datetime; _T0=$EPOCHREALTIME
+source ~/.zshrc
+_ttfp() { print -u2 "TTFP=$(( (EPOCHREALTIME - _T0) * 1000 ))ms"; exit 0 }
+autoload -Uz add-zsh-hook; add-zsh-hook precmd _ttfp
+```
+```zsh
+ZDOTDIR=<probe dir> script -q /dev/null zsh -i </dev/null
+```
+
+History: ~350ms → ~233ms (removing duplicate work) → **~142ms TTFP** (staging).
+Measure with a 20-run average; `time -p` alone has 10ms resolution, too coarse
+here, and single readings drift by ±40ms on this machine.
+
+What is left on the critical path, measured with plugins disabled one at a time:
 
 | | cost |
 | --- | --- |
 | bare `zsh -f` | 11ms |
 | oh-my-zsh core (13 libs + `compinit`) | ~91ms |
-| all 18 plugins together | ~18ms |
-| keychain lookup for LDAP creds | ~26ms |
-| everything else in `zshrc` | ~87ms |
+| all remaining plugins together | ~15ms |
+| prompt, PATH, aliases | ~5ms |
 
-Two things worth knowing about that table. Plugins are cheap — pruning them is
-not where the time is, so keep the ones you use. And oh-my-zsh's ~91ms is a
-**floor**: it sources everything synchronously. Getting under ~150ms means
-replacing it with a deferred loader (`zsh-defer`, zinit turbo mode), which is a
-migration rather than a tweak.
+Plugins are cheap — pruning them is not where the time is, so keep the ones you
+use. oh-my-zsh's ~91ms is the **floor** for this setup: it sources everything
+synchronously and there is no flag to change that. Going lower means dropping
+oh-my-zsh for `zim` or a hand-rolled zshrc, which would put TTFP around 60-80ms
+at the cost of owning ~15 plugins' worth of aliases yourself.
 
 A few non-obvious things in `zshrc` that are easy to "clean up" and thereby
 break or slow down:
@@ -110,6 +136,35 @@ break or slow down:
 - **Plugins whose binary isn't installed were removed** (`git-flow`,
   `docker-compose`, `fasd`, `colorize` — the last needs `pygmentize` or
   `chroma`). They were loading and doing nothing.
+- **Staged startup with `zsh-defer`**, which `zshrc` installs itself: if
+  `$ZSH_CUSTOM/plugins/zsh-defer` is missing it clones it on first run, and from
+  then on the `autoupdate` plugin keeps it current like any other custom plugin
+  (its `.git` sits at exactly the depth autoupdate scans). If the clone can't
+  happen — offline, no git — a fallback `zsh-defer()` shim with the same call
+  signature runs each command immediately instead. That shim matters: without
+  it, a missing zsh-defer would silently drop syntax highlighting,
+  autosuggestions, fzf **and the credential exports**, since every deferred line
+  would just fail. Deferred: `jump`,
+  terraform's `complete -C`, iTerm2 integration, the registry token, the
+  keychain creds, `autoupdate`, fzf, autosuggestions, syntax-highlighting.
+  Eager: PATH, aliases, prompt, `compinit` — anything you can need the moment
+  the prompt appears.
+  - **`autoupdate` was the surprise: ~25ms**, because it runs
+    `find -L $ZSH_CUSTOM -maxdepth 3 -name .git` on every startup. Deferring
+    just that plugin beat deferring eight completion-heavy plugins (~142ms vs
+    ~145ms TTFP) with none of the risk. Measure before assuming which plugin is
+    expensive.
+  - **Order in the deferred block matters** and is preserved: fzf defines
+    widgets → autosuggestions wraps widgets → syntax-highlighting must wrap
+    everything before it, so it stays last.
+  - **Check each deferred file before deferring it.** zsh-defer runs commands in
+    function scope with `LOCAL_OPTIONS` and sends output to `/dev/null`. A
+    top-level `setopt` or a non-global `typeset` in a deferred file would
+    silently not persist. `zsh-syntax-highlighting` looks unsafe (a bare
+    `typeset zsh_highlight__aliases` at line 31) but is fine — it is consumed at
+    line 583 of the same file, so function scope is exactly its lifetime.
+    The keychain creds are deferred with `+2` so their "item not found" hint is
+    still visible instead of going to `/dev/null`.
 - **No `$(go env GOPATH)`** — that forked `go` on every startup (~10ms) to
   produce `$HOME/go`. Hardcoded as `${GOPATH:-$HOME/go}`, and *appended* to
   PATH, not prepended, so go-installed tools don't shadow brew/asdf ones.

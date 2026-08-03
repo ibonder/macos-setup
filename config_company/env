@@ -1,39 +1,50 @@
 # Template for ~/.config/company/env — sourced from ~/.zshrc.
 #
-# Holds the one LDAP/SSO credential that several tools each want under their own
-# variable name. Fill in the two values below; everything else is derived, so
-# adding a new consumer never means repeating the secret.
+# Tracked verbatim: no credential lives in this file, so there is nothing to
+# redact and nothing to fill in. Install with:
+#   mkdir -p ~/.config/company && cp config_company/env ~/.config/company/env
+# then create the keychain item as described below.
 #
-# Install:
-#   mkdir -p ~/.config/company
-#   cp config_company/env ~/.config/company/env
-#   chmod 600 ~/.config/company/env     # keep it 0600, it holds a plaintext secret
+# The password is NOT stored here — it lives in the macOS login keychain as a
+# generic password with service "company-ldap". The LDAP username is the keychain
+# item's account field, so one item is the single source of truth.
 #
-# The ~/.zshrc line that picks it up (guarded, so a missing file is harmless):
-#   [[ -f ~/.config/company/env ]] && source ~/.config/company/env
+# Create / rotate the item (prompts for the password twice, nothing in argv or
+# shell history):
+#   security add-generic-password -U -s company-ldap -a '<ldap-username>' -w
+#
+# Inspect it:  security find-generic-password -s company-ldap
+# Read it:     security find-generic-password -s company-ldap -w
+# Remove it:   security delete-generic-password -s company-ldap
 
-# --- fill these in -----------------------------------------------------------
-export COMPANY_LDAP_USER="xxx"           # e.g. firstname.lastname
-export COMPANY_LDAP_PASS="xxx"           # LDAP / SSO password
-# -----------------------------------------------------------------------------
+# One `security` call, not two: -g prints the attributes on stdout and the
+# password on stderr, so merging them yields both fields per fork. Each fork
+# costs ~22ms of shell startup, and parsing below is pure zsh (no awk fork).
+_company_kc=$(security find-generic-password -g -s company-ldap 2>&1)
+if [[ -n $_company_kc ]]; then
+  _company_lines=("${(f)_company_kc}")
+  _company_user=${${(M)_company_lines:#*\"acct\"<blob>=*}#*\"acct\"<blob>=\"}
+  _company_user=${_company_user%\"}
+  _company_pass=${${(M)_company_lines:#password: *}#password: \"}
+  _company_pass=${_company_pass%\"}
+fi
 
-# Terraform (Vault stacks authenticating via the LDAP auth backend).
-# These variables are declared without defaults, so TF_VAR_* must be exported
-# even when the provider's auth_login {} block is commented out.
-export TF_VAR_ldap_username="${COMPANY_LDAP_USER}"
-export TF_VAR_ldap_password="${COMPANY_LDAP_PASS}"
+if [[ -n $_company_user && -n $_company_pass ]]; then
+  export COMPANY_LDAP_USER=$_company_user
+  export COMPANY_LDAP_PASS=$_company_pass
 
-# Confluence CLI / API scripts
-export CONFLUENCE_USER="${COMPANY_LDAP_USER}"
-export CONFLUENCE_PASS="${COMPANY_LDAP_PASS}"
+  # Terraform (vault-* stacks: LDAP auth login)
+  export TF_VAR_ldap_username=$_company_user
+  export TF_VAR_ldap_password=$_company_pass
 
-# Add further consumers here, referencing the two variables above rather than
-# pasting the credential again.
+  # Confluence
+  export CONFLUENCE_USER=$_company_user
+  export CONFLUENCE_PASS=$_company_pass
+else
+  # Leave everything unset rather than exporting empty strings — terraform then
+  # prompts for var.ldap_password instead of failing an LDAP bind with "".
+  print -u2 'company creds: keychain item "company-ldap" not found; run'
+  print -u2 "  security add-generic-password -U -s company-ldap -a '<ldap-username>' -w"
+fi
 
-# --- alternative: keep the secret in the macOS Keychain instead of on disk ---
-# Store it once:
-#   security add-generic-password -a "$USER" -s company-ldap -w
-# Then replace the COMPANY_LDAP_PASS line above with:
-#   export COMPANY_LDAP_PASS="$(security find-generic-password -s company-ldap -w)"
-# Costs a one-time "Always Allow" prompt per shell binary, and keeps the
-# plaintext out of the filesystem.
+unset _company_kc _company_lines _company_user _company_pass

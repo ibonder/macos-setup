@@ -71,15 +71,6 @@ eval "$(jump shell)"
 
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
 
-# thefuck's own `--alias` costs ~70ms at every startup, which was a quarter of
-# the total. Pay it on first use instead: the wrapper replaces itself with the
-# real alias function, so only the first invocation is slow.
-fuck() {
-  unfunction fuck
-  eval "$(thefuck --alias)"
-  fuck "$@"
-}
-
 test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 
 # NOTE: no `source <(kubectl completion zsh)` — the oh-my-zsh kubectl plugin already

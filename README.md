@@ -67,9 +67,11 @@ break or slow down:
 - **No manual `compinit`.** oh-my-zsh runs it. Calling it yourself as well
   makes `compinit` *and* `compdump` run twice, which cost ~185ms of a ~350ms
   startup here.
-- **`thefuck` is lazy-loaded.** `eval $(thefuck --alias)` costs ~70ms at every
-  startup — a quarter of the total. The `fuck()` wrapper `unfunction`s itself,
-  evals the real alias, and re-dispatches, so the cost lands on first use only.
+- **No `thefuck`.** `eval $(thefuck --alias)` cost ~70ms at every startup — a
+  quarter of the total — so it's removed from `zshrc` and both Brewfiles. If you
+  ever want it back, lazy-load it rather than paying that at every prompt: a
+  `fuck()` wrapper that `unfunction`s itself, evals the real alias, then
+  re-dispatches, moves the cost to first use.
 - **`ZSH_DISABLE_COMPFIX=true`** skips oh-my-zsh's `compaudit` pass (~10-20ms).
   Tradeoff: no warning about world-writable completion directories.
 - **No `$(go env GOPATH)`** — that forked `go` on every startup (~10ms) to

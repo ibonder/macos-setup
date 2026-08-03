@@ -13,7 +13,6 @@ brew "pure"
 # Interpreted, interactive, object-oriented programming language
 brew "python@3.14"
 # Programmatically correct mistyped console commands
-brew "thefuck"
 # Fish shell like syntax highlighting for zsh
 brew "zsh-syntax-highlighting"
 cask "font-meslo-for-powerline"

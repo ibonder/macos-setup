@@ -135,7 +135,6 @@ brew "tfenv"
 # Linter for Terraform files
 brew "tflint"
 # Programmatically correct mistyped console commands
-brew "thefuck"
 # Command-line translator using Google Translate and more
 brew "translate-shell"
 # Display directories as trees (with optional color/HTML output)

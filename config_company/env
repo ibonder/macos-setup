@@ -1,0 +1,39 @@
+# Template for ~/.config/company/env — sourced from ~/.zshrc.
+#
+# Holds the one LDAP/SSO credential that several tools each want under their own
+# variable name. Fill in the two values below; everything else is derived, so
+# adding a new consumer never means repeating the secret.
+#
+# Install:
+#   mkdir -p ~/.config/company
+#   cp config_company/env ~/.config/company/env
+#   chmod 600 ~/.config/company/env     # keep it 0600, it holds a plaintext secret
+#
+# The ~/.zshrc line that picks it up (guarded, so a missing file is harmless):
+#   [[ -f ~/.config/company/env ]] && source ~/.config/company/env
+
+# --- fill these in -----------------------------------------------------------
+export COMPANY_LDAP_USER="xxx"           # e.g. firstname.lastname
+export COMPANY_LDAP_PASS="xxx"           # LDAP / SSO password
+# -----------------------------------------------------------------------------
+
+# Terraform (Vault stacks authenticating via the LDAP auth backend).
+# These variables are declared without defaults, so TF_VAR_* must be exported
+# even when the provider's auth_login {} block is commented out.
+export TF_VAR_ldap_username="${COMPANY_LDAP_USER}"
+export TF_VAR_ldap_password="${COMPANY_LDAP_PASS}"
+
+# Confluence CLI / API scripts
+export CONFLUENCE_USER="${COMPANY_LDAP_USER}"
+export CONFLUENCE_PASS="${COMPANY_LDAP_PASS}"
+
+# Add further consumers here, referencing the two variables above rather than
+# pasting the credential again.
+
+# --- alternative: keep the secret in the macOS Keychain instead of on disk ---
+# Store it once:
+#   security add-generic-password -a "$USER" -s company-ldap -w
+# Then replace the COMPANY_LDAP_PASS line above with:
+#   export COMPANY_LDAP_PASS="$(security find-generic-password -s company-ldap -w)"
+# Costs a one-time "Always Allow" prompt per shell binary, and keeps the
+# plaintext out of the filesystem.

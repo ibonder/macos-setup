@@ -1,0 +1,64 @@
+# Template for ~/.aws/config — AWS IAM Identity Center (SSO) profiles.
+#
+# Install:
+#   mkdir -p ~/.aws
+#   cp aws_config ~/.aws/config
+#   aws sso login --profile <any-profile>   # one login covers every profile
+#                                           # sharing the same sso-session
+#
+# Conventions worth keeping:
+#   - One [sso-session] block, reused by every profile — a single browser login.
+#   - Profile naming: <account-alias>-<role>, with a `-ro` suffix for read-only.
+#     Predictable names matter: `awsp` (see bash_aliases) lists them with fzf,
+#     and tooling hardcodes them (terraform justfiles, sops aws_profile, ...).
+#   - Do NOT rename a profile to stand in for a different account/role. That
+#     shortcut breaks the moment the real profile is added and both claim the
+#     same name — duplicate sections make the whole file unparseable and every
+#     `aws` call fails with "Unable to parse config file".
+#
+# Replace every xxx below: 12-digit account IDs, the SSO start URL, and the
+# permission-set (role) names your organisation actually grants you.
+
+[sso-session company-sso]
+sso_start_url = https://xxx.awsapps.com/start
+sso_region = eu-central-1
+sso_registration_scopes = sso:account:access
+
+# --- main / shared services account -----------------------------------------
+[profile main-admin]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin
+sso_session = company-sso
+
+[profile main-admin-ro]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin-ro
+sso_session = company-sso
+
+# --- development ------------------------------------------------------------
+[profile development-admin]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin
+sso_session = company-sso
+
+[profile development-admin-ro]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin-ro
+sso_session = company-sso
+
+# --- production -------------------------------------------------------------
+[profile production-admin]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin
+sso_session = company-sso
+
+[profile production-admin-ro]
+sso_account_id = xxxxxxxxxxxx
+sso_role_name = admin-ro
+sso_session = company-sso
+
+# EKS contexts are generated, not written by hand:
+#   aws eks update-kubeconfig --name <cluster> --region <region> \
+#     --profile <profile> --alias <short-name> --role-arn <arn>
+# ~/.kube/config is therefore intentionally not tracked in this repo — it embeds
+# cluster endpoints, account IDs and role ARNs.

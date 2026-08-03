@@ -10,9 +10,40 @@ export ANSIBLE_COW_SELECTION="random"
 
 # Staged startup: `zsh-defer <cmd>` queues <cmd> to run once zle goes idle —
 # after the prompt is on screen, but before your first command executes. Takes
-# <1ms to load and must be sourced before first use. See the deferred block at
-# the bottom of this file for what is moved off the critical path.
-source $ZSH/custom/plugins/zsh-defer/zsh-defer.plugin.zsh
+# <1ms to load. See the deferred block at the bottom for what is moved off the
+# critical path.
+#
+# Self-installing, so a fresh machine needs no manual step; once cloned, the
+# autoupdate plugin keeps it current like any other $ZSH_CUSTOM plugin.
+# If the clone can't happen (offline, no git), the fallback below runs the
+# deferred commands immediately instead — slower startup, but nothing is lost.
+# Without that fallback a missing zsh-defer would silently drop syntax
+# highlighting, autosuggestions, fzf and the credential exports.
+_zsh_defer_dir=$ZSH/custom/plugins/zsh-defer
+if [[ ! -f $_zsh_defer_dir/zsh-defer.plugin.zsh ]]; then
+  command git clone --depth 1 -q https://github.com/romkatv/zsh-defer.git \
+    $_zsh_defer_dir 2>/dev/null
+fi
+if [[ -f $_zsh_defer_dir/zsh-defer.plugin.zsh ]]; then
+  source $_zsh_defer_dir/zsh-defer.plugin.zsh
+else
+  print -u2 "zsh-defer missing and clone failed; loading everything eagerly"
+  # Same call signature as the real thing: zsh-defer [{+|-}flags] [-t delay] cmd...
+  # or -c 'list'. Options are parsed and discarded, then the command runs now.
+  zsh-defer() {
+    local as_list=0
+    while (( $# )); do
+      case $1 in
+        -c) as_list=1; shift; break ;;
+        -t) shift 2 ;;
+        [-+]*) shift ;;
+        *) break ;;
+      esac
+    done
+    if (( as_list )); then eval "$*"; else "$@"; fi
+  }
+fi
+unset _zsh_defer_dir
 
 # Skip oh-my-zsh's compaudit/compfix pass over every completion directory.
 # Saves ~10-20ms; the tradeoff is no warning about world-writable comp dirs.

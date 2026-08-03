@@ -44,8 +44,9 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 brew install git
 git clone https://github.com/TamCore/autoupdate-oh-my-zsh-plugins $ZSH_CUSTOM/plugins/autoupdate
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-# Required by zshrc: staged startup. Without it the shell still works, but every
-# `zsh-defer ...` line becomes a "command not found" at startup.
+# Optional: zshrc clones zsh-defer itself on first run if it's missing, and
+# falls back to eager loading if that fails. Listed here only to make the
+# dependency visible; running it just saves the first shell a clone.
 git clone --depth 1 https://github.com/romkatv/zsh-defer ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-defer
 brew install zsh-syntax-highlighting
 

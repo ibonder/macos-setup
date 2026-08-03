@@ -136,8 +136,15 @@ break or slow down:
 - **Plugins whose binary isn't installed were removed** (`git-flow`,
   `docker-compose`, `fasd`, `colorize` — the last needs `pygmentize` or
   `chroma`). They were loading and doing nothing.
-- **Staged startup with `zsh-defer`** (cloned into `$ZSH_CUSTOM/plugins/`, see
-  `setup_mac.sh` — the `zsh-defer` lines break without it). Deferred: `jump`,
+- **Staged startup with `zsh-defer`**, which `zshrc` installs itself: if
+  `$ZSH_CUSTOM/plugins/zsh-defer` is missing it clones it on first run, and from
+  then on the `autoupdate` plugin keeps it current like any other custom plugin
+  (its `.git` sits at exactly the depth autoupdate scans). If the clone can't
+  happen — offline, no git — a fallback `zsh-defer()` shim with the same call
+  signature runs each command immediately instead. That shim matters: without
+  it, a missing zsh-defer would silently drop syntax highlighting,
+  autosuggestions, fzf **and the credential exports**, since every deferred line
+  would just fail. Deferred: `jump`,
   terraform's `complete -C`, iTerm2 integration, the registry token, the
   keychain creds, `autoupdate`, fzf, autosuggestions, syntax-highlighting.
   Eager: PATH, aliases, prompt, `compinit` — anything you can need the moment

@@ -35,7 +35,31 @@ Not tracked on purpose:
 - `~/.aws/sso/cache/`, `~/.aws/cli/cache/` — short-lived SSO tokens.
 - Anything under `~/.ssh/` other than `config`.
 
+## History and scrollback sizes
+
+Measured on this machine, so the numbers have a basis:
+
+- **`HISTSIZE`/`SAVEHIST` = 200000.** Shell startup is *flat* from 3k to 1M
+  history entries (~0.30s either way, best of 3 at each size), so history size
+  is a capacity decision, not a performance one. 200k entries is roughly 12MB
+  on disk and years of commands. A 1M cap isn't harmful — it's a ceiling, not an
+  allocation — it just buys nothing over 200k.
+- **iTerm2 scrollback = 50000 lines**, `Unlimited Scrollback` off. Unlimited is
+  the only genuinely risky setting: one runaway `kubectl logs -f` can grow a
+  session's buffer without bound. 50k lines per session is comfortable.
+  Change it in the app under **Settings → Profiles → Terminal → Scrollback
+  Lines** — editing the plist while iTerm2 is running gets overwritten when it
+  quits.
+- Dedup options matter more than size for usefulness: `hist_save_no_dups` and
+  `hist_find_no_dups` (plus oh-my-zsh's `hist_ignore_dups`,
+  `hist_expire_dups_first`) keep the file from filling with repeated commands.
+
 ## Zsh startup notes
+
+Startup went ~350ms → ~210ms. Where the remaining time goes, best-of-5 each:
+oh-my-zsh core (libs + `compinit`) **90ms**, all plugins together **+40ms**,
+everything else in `zshrc` **+80ms**. The 90ms is oh-my-zsh's floor — it always
+runs `compinit` itself.
 
 A few non-obvious things in `zshrc` that are easy to "clean up" and thereby
 break or slow down:
@@ -43,6 +67,17 @@ break or slow down:
 - **No manual `compinit`.** oh-my-zsh runs it. Calling it yourself as well
   makes `compinit` *and* `compdump` run twice, which cost ~185ms of a ~350ms
   startup here.
+- **`thefuck` is lazy-loaded.** `eval $(thefuck --alias)` costs ~70ms at every
+  startup — a quarter of the total. The `fuck()` wrapper `unfunction`s itself,
+  evals the real alias, and re-dispatches, so the cost lands on first use only.
+- **`ZSH_DISABLE_COMPFIX=true`** skips oh-my-zsh's `compaudit` pass (~10-20ms).
+  Tradeoff: no warning about world-writable completion directories.
+- **No `$(go env GOPATH)`** — that forked `go` on every startup (~10ms) to
+  produce `$HOME/go`. Hardcoded as `${GOPATH:-$HOME/go}`, and *appended* to
+  PATH, not prepended, so go-installed tools don't shadow brew/asdf ones.
+- **No `PATH="/opt/homebrew/bin:$PATH"`** — `/etc/paths.d/homebrew` already puts
+  it on PATH for every shell, so that line only created a duplicate entry.
+  `typeset -U path PATH` keeps the rest deduplicated.
 - **No manual `bashcompinit`.** oh-my-zsh's `lib/completion.zsh` already runs
   it, so the `complete -C ... terraform` registration works without it.
 - **No `source <(kubectl completion zsh)`.** The oh-my-zsh `kubectl` plugin

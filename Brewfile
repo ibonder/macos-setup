@@ -196,6 +196,9 @@ cask "discord"
 cask "font-meslo-for-powerline"
 # Web browser
 cask "google-chrome"
+# Drive sync client — the Docs/Sheets/Slides entries in /Applications are its
+# web shortcuts, not separate installs
+cask "google-drive"
 cask "chef/chef/inspec"
 # Terminal emulator
 cask "iterm2"

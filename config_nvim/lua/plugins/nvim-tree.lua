@@ -1,11 +1,16 @@
 return {
   "nvim-tree/nvim-tree.lua",
   version = "*",
-  lazy = false,
-  dependencies = {
-    "nvim-tree/nvim-web-devicons",
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  cmd = { "NvimTreeToggle", "NvimTreeFindFile" },
+  keys = {
+    { "<leader>e", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file tree" },
+    { "<leader>E", "<cmd>NvimTreeFindFile<CR>", desc = "Reveal file in tree" },
   },
-  config = function()
-    require("nvim-tree").setup {}
-  end,
+  opts = {
+    view = { width = 34 },
+    renderer = { group_empty = true },
+    filters = { dotfiles = false, custom = { "^%.git$" } },
+    git = { enable = true },
+  },
 }

@@ -1,11 +1,15 @@
 return {
   "NeogitOrg/neogit",
   dependencies = {
-    "nvim-lua/plenary.nvim",         -- required
-    "sindrets/diffview.nvim",        -- optional - Diff integration
-    "ibhagwan/fzf-lua",              -- optional
+    "nvim-lua/plenary.nvim",
+    "sindrets/diffview.nvim",
+    "ibhagwan/fzf-lua",
   },
-  config = function()
-    require("neogit").setup {}
-  end,
+  cmd = "Neogit",
+  keys = {
+    { "<leader>gg", "<cmd>Neogit<CR>", desc = "Neogit" },
+    { "<leader>gd", "<cmd>DiffviewOpen<CR>", desc = "Diff view" },
+    { "<leader>gh", "<cmd>DiffviewFileHistory %<CR>", desc = "File history" },
+  },
+  opts = {},
 }

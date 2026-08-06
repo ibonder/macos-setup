@@ -26,7 +26,7 @@ through the list below — `grep -rn 'xxx\|XXX\|example\.com' .` finds every spo
 | `ssh_config` | `~/.ssh/config` | `IdentityFile ~/.ssh/xxx` (key filenames), `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. |
 | `terraformrc` | `~/.terraformrc` | The `network_mirror` URL if you use a private registry mirror, plus a `credentials "git.example.com"` block holding your module-registry token (read by `TF_TOKEN_git_example_com` in `zshrc`). |
 | `zshrc` | `~/.zshrc` | `git.example.com` → your module registry host, in both the `TF_TOKEN_*` variable name (dots become underscores) and the `awk` pattern. Rename `~/.config/company/` if you prefer another directory. |
-| `setup_mac.sh` | — | `/Users/XXX/` paths in the config-copy section; it's a template to read, not to run unattended. |
+| `setup_mac.sh` | — | Nothing. It derives every path from its own location, so it needs no editing — see "Bootstrapping a fresh machine" below. |
 
 Not tracked on purpose:
 
@@ -34,6 +34,54 @@ Not tracked on purpose:
   endpoints, account IDs and role ARNs.
 - `~/.aws/sso/cache/`, `~/.aws/cli/cache/` — short-lived SSO tokens.
 - Anything under `~/.ssh/` other than `config`.
+
+## Bootstrapping a fresh machine
+
+```sh
+git clone https://github.com/ibonder/macos-setup.git && cd macos-setup
+DRY_RUN=1 ./setup_mac.sh    # read what it would do
+./setup_mac.sh              # do it
+```
+
+It is safe to re-run — every step tests for its own result first, so a second
+run reports `already done` rather than failing. Paths are derived from the
+script's own location, so it works from wherever the repo is cloned.
+
+**It will not overwrite a config that already exists.** The tracked copies are
+anonymised, so replacing a working `~/.gitconfig` with one full of `xxx` would
+be a downgrade. Existing files are reported and skipped; `FORCE=1` opts into
+replacing them, backing the old one up to `~/.config-backup-<timestamp>/`
+first. That makes a plain run safe on a machine that is already set up.
+
+It finishes by printing what still needs a human: filling in placeholders,
+restoring SSH private keys, and the keychain entry.
+
+## How apps get installed
+
+Everything installable is declared in the `Brewfile` — `brew bundle install`
+covers formulae, casks and Mac App Store apps in one pass. There are no
+hand-download steps.
+
+Apps that ship their own updater (Chrome, Claude, Slack, VS Code, Notion,
+1Password, Spotify, Zoom, …) are still installed as casks, and that does **not**
+fight their updaters. Those casks are flagged `auto_updates true` upstream,
+which makes `brew upgrade` skip them by default — Homebrew places the app and
+then stays out of the way. The cask downloads the vendor's own binary too
+(`google-chrome` pulls from `dl.google.com`, `claude` from
+`downloads.claude.ai`), so it is the upstream install, not a repackage.
+
+The one rule that follows from this: **never run `brew upgrade --greedy`.** That
+flag exists specifically to override the skip, and it is what would start
+clobbering self-updating apps.
+
+App Store apps live in the `mas` block and update through the App Store. An app
+belongs in exactly one place — Bitwarden and Slack are `mas` entries rather than
+casks because that is how they are installed here, and declaring both would
+install the app twice. Regenerate the block from reality with `mas list`, and
+verify an ID with `mas info <id>` before adding it.
+
+Deliberately **not** declared: Falcon, Company Portal and the internal VPN
+tooling. Those arrive via MDM and must not be self-installed.
 
 ## Neovim
 

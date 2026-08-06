@@ -35,6 +35,37 @@ Not tracked on purpose:
 - `~/.aws/sso/cache/`, `~/.aws/cli/cache/` — short-lived SSO tokens.
 - Anything under `~/.ssh/` other than `config`.
 
+## Neovim
+
+`config_nvim/` is the whole Neovim config. It **must** land at `~/.config/nvim`
+— Neovim reads nothing else, and a leading dot (`~/.config/.nvim`) silently
+disables it. Symlinking beats copying so edits here go live immediately:
+
+```sh
+ln -s "$PWD/config_nvim" ~/.config/nvim
+```
+
+Plugins are managed by [lazy.nvim](https://github.com/folke/lazy.nvim), which
+bootstraps itself on first launch and pins versions in
+`config_nvim/lazy-lock.json`. Language servers install on demand via
+[mason.nvim](https://github.com/mason-org/mason.nvim).
+
+Prerequisites beyond `brew "neovim"`, all already in the `Brewfile`:
+
+| Tool | Needed for |
+| --- | --- |
+| `tree-sitter-cli` | compiling nvim-treesitter parsers (the `main` branch shells out to it) |
+| `node` | the npm-based language servers — yaml, json, bash, dockerfile |
+| `go` | `gopls` |
+
+If mason's npm-based servers fail with `EACCES` on `~/.npm/_cacache`, an old
+`sudo npm` run left root-owned files in the cache. Either repoint the cache
+(`npm config set cache ~/.cache/npm`) or reclaim it with
+`sudo chown -R "$(id -u):$(id -g)" ~/.npm`.
+
+Leader is `<Space>`. `<leader>ff` files, `<leader>fg` grep, `<leader>e` file
+tree, `<leader>gg` Neogit; which-key lists the rest on any prefix.
+
 ## History and scrollback sizes
 
 Measured on this machine, so the numbers have a basis:

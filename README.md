@@ -79,12 +79,17 @@ One-time setup:
 1. In 1Password: **Settings → Developer → "Use the SSH agent"**.
 2. Add each key as an **SSH Key** item (paste the private key; 1Password derives
    the public half). Do this before wiping the old machine.
-3. Confirm the agent is serving them:
+3. Open a new shell, then confirm the agent is serving them:
 
    ```sh
    ssh-add -l          # lists keys held by 1Password
    ssh -T git@github.com
    ```
+
+   `ssh` finds the agent via `IdentityAgent` in `ssh_config`, but `ssh-add` only
+   reads `SSH_AUTH_SOCK` — `zshrc` exports that, guarded on the socket existing,
+   so both work. If `ssh-add -l` says "error fetching identities", the agent is
+   not enabled yet or 1Password is not running.
 
 Every `IdentityFile` in `ssh_config` points at a **public** key. That is
 deliberate: `ssh` reads the `.pub` only to decide which key to request from the

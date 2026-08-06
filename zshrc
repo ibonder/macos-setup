@@ -181,6 +181,15 @@ zsh-defer -c 'complete -o nospace -C /opt/homebrew/bin/terraform terraform'
 [[ -f ${HOME}/.iterm2_shell_integration.zsh ]] &&
   zsh-defer source "${HOME}/.iterm2_shell_integration.zsh"
 
+# 1Password SSH agent. ssh itself picks this up from IdentityAgent in
+# ~/.ssh/config, but tools that read SSH_AUTH_SOCK directly — ssh-add, and
+# anything shelling out to an agent — need it in the environment too.
+# Guarded on the socket existing: exporting a path to a missing socket would
+# break ssh outright whenever 1Password is not running.
+_op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+[[ -S $_op_sock ]] && export SSH_AUTH_SOCK=$_op_sock
+unset _op_sock
+
 # LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_*, plus the Terraform registry
 # token -> TF_TOKEN_<host> (added 2026-08-03, registry token moved here
 # 2026-08-06 — it used to be awk'd out of ~/.terraformrc, one fork and one

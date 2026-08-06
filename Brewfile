@@ -5,7 +5,6 @@ tap "hashicorp/tap"
 tap "mbode/tap"
 tap "mike-engel/jwt-cli"
 tap "minamijoyo/hcledit"
-tap "wallix/awless"
 # Search tool like grep, but optimized for programmers
 brew "ack"
 # Shell extension to jump to frequently used directories
@@ -92,6 +91,8 @@ brew "nmap"
 brew "onefetch"
 # Package compiler and linker metadata toolkit
 brew "pkgconf"
+# Command-line shell and scripting language (was a cask, now a formula)
+brew "powershell"
 # Framework for managing multi-language pre-commit hooks
 brew "pre-commit"
 # Service monitoring system and time series database
@@ -173,40 +174,76 @@ brew "mbode/tap/terraform-state-mover"
 brew "mike-engel/jwt-cli/jwt-cli"
 # A command line editor for HCL
 brew "minamijoyo/hcledit/hcledit"
+# Casks below are install-once bootstraps. Every one flagged `auto_updates true`
+# upstream keeps itself current from the vendor, and `brew upgrade` skips them
+# by default — so Homebrew places the app and then stays out of the way. Do NOT
+# run `brew upgrade --greedy`: that is what would fight their own updaters.
+
+# Password manager
+cask "1password"
+# Remote desktop — no auto_updates flag, so brew manages this one
+cask "anydesk"
 # Application uninstaller
 cask "appcleaner"
 # Tool to flash OS images to SD cards & USB drives
 cask "balenaetcher"
 # E-books management software
 cask "calibre"
+# Anthropic Claude desktop app
+cask "claude"
+# Voice and text chat
+cask "discord"
 cask "font-meslo-for-powerline"
-cask "inspec"
+# Web browser
+cask "google-chrome"
+cask "chef/chef/inspec"
+# Terminal emulator
+cask "iterm2"
 # Kubernetes IDE
 cask "lens"
 # Adaptive brightness for external displays
 cask "lunar"
+# Notes and docs
+cask "notion"
 # MikroTik Winbox
 cask "nrlquaker-winbox"
+# Open-source build of Lens
+cask "openlens"
 # Android file transfer
 cask "openmtp"
-# Command-line shell and scripting language
-cask "powershell"
 # OpenVPN client
 cask "pritunl"
 # Quick Look plugin for JSON files
 cask "quicklook-json"
+# Music streaming
+cask "spotify"
 # Quicklook extension for source files
 cask "syntax-highlight"
+# Mesh VPN client
+cask "tailscale-app"
 # Free and open-source OpenVPN client
 cask "tunnelblick"
+# Code editor
+cask "visual-studio-code"
 # Multimedia player
 cask "vlc"
 # Network protocol analyzer
 cask "wireshark-app"
-mas "Keynote", id: 409183694
+# Video conferencing
+cask "zoom"
+# App Store apps update through the App Store, never through brew. Bitwarden and
+# Slack live here rather than as casks because that is how they are installed on
+# this machine — declaring both would install the app twice.
+# IDs verified with `mas info <id>`; regenerate the list with `mas list`.
+mas "Bitwarden", id: 1352778147
+mas "Happ", id: 6504287215
+mas "Keynote", id: 361285480
 mas "MacDroid", id: 1476545828
-mas "Numbers", id: 409203825
-mas "Pages", id: 409201541
+mas "Meshtastic", id: 1586432531
+mas "Mouse Jiggler", id: 6740313656
+mas "Numbers", id: 361304891
+mas "Pages", id: 361309726
 mas "QuickFTP", id: 1451646819
+mas "Slack", id: 803453959
 mas "Telegram", id: 747648890
 mas "WireGuard", id: 1451685025

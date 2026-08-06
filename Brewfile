@@ -84,6 +84,8 @@ brew "marp-cli"
 brew "mas"
 # Ambitious Vim-fork focused on extensibility and agility
 brew "neovim"
+# Parser generator tool — required by nvim-treesitter to compile parsers
+brew "tree-sitter-cli"
 # Port scanning utility for large networks
 brew "nmap"
 # Command-line Git information tool

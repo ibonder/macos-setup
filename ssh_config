@@ -1,23 +1,32 @@
+# Private keys live in 1Password, not on disk. The agent below serves them, so
+# every IdentityFile here points at a *public* key — ssh uses it only to ask the
+# agent for the matching private half. Public keys are not secret and may be
+# tracked. Enable the agent once in 1Password: Settings > Developer > Use the
+# SSH agent. See README.md, "SSH keys and secrets".
+#
+# There is deliberately no AddKeysToAgent/UseKeychain here: both exist to manage
+# on-disk keys, and the 1Password agent refuses key additions.
+
 # https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port#enabling-ssh-connections-over-https
 Host github.com
   HostName ssh.github.com
   Port 443
   User git
   UpdateHostKeys yes
-  IdentityFile ~/.ssh/xxx
+  IdentitiesOnly yes
+  IdentityFile ~/.ssh/xxx.pub
 
 # Some group of hosts
 Host example-1
   HostName xxx.xxx.xxx.xxx
   User ubuntu
   IdentitiesOnly yes
-  IdentityFile ~/.ssh/id_ed25519
+  IdentityFile ~/.ssh/id_ed25519.pub
 
 # Main wildcard ruleset
 Host *
   User xxx
-  AddKeysToAgent yes
-  UseKeychain yes
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
   ServerAliveInterval 60
   ChallengeResponseAuthentication no
   StrictHostKeyChecking accept-new

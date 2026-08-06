@@ -54,7 +54,11 @@ brew install zsh-syntax-highlighting
 brew install pure
 
 # Copy TerminalStuff from external disk to Downloads
-mv Downloads/TerminalStuff/config_nvim ~/.config/.nvim
+# Neovim only reads ~/.config/nvim — a leading dot here silently disables the
+# entire config. If this repo is cloned locally, symlinking it instead of
+# moving keeps edits live (see README).
+mkdir -p ~/.config
+mv Downloads/TerminalStuff/config_nvim ~/.config/nvim
 mkdir ~/.ssh/
 cp Downloads/TerminalStuff/Users/XXX/.ssh/* ~/.ssh
 mv Downloads/TerminalStuff/gitconfig ~/.gitconfig

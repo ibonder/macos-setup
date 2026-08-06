@@ -181,12 +181,10 @@ zsh-defer -c 'complete -o nospace -C /opt/homebrew/bin/terraform terraform'
 [[ -f ${HOME}/.iterm2_shell_integration.zsh ]] &&
   zsh-defer source "${HOME}/.iterm2_shell_integration.zsh"
 
-# Terraform module registry auth for git.example.com (added 2026-07-30)
-# just init sets TF_CLI_CONFIG_FILE=network-mirror.tfrc, which ignores ~/.terraformrc;
-# this env-var token is honored regardless of the active CLI config file.
-zsh-defer -c 'export TF_TOKEN_git_example_com=$(awk '\''/credentials "git.example.com"/{f=1} f&&/token/{gsub(/.*= *"|"/,"");print;exit}'\'' ~/.terraformrc 2>/dev/null)'
-
-# LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_* (added 2026-08-03).
+# LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_*, plus the Terraform registry
+# token -> TF_TOKEN_<host> (added 2026-08-03, registry token moved here
+# 2026-08-06 — it used to be awk'd out of ~/.terraformrc, one fork and one
+# plaintext secret ago).
 # +2 keeps stderr, so the "keychain item not found" hint is still visible.
 [[ -f ~/.config/company/env ]] && zsh-defer +2 source ~/.config/company/env
 

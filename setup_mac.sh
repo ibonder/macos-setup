@@ -210,6 +210,10 @@ link_config config_nvim        "$HOME/.config/nvim"
 copy_config zshrc              "$HOME/.zshrc"
 copy_config bash_aliases       "$HOME/.bash_aliases"
 copy_config gitconfig          "$HOME/.gitconfig"
+# gitconfig sets useConfigOnly, so git refuses to commit until these two supply
+# an identity. Without them every commit fails with "unable to auto-detect email".
+copy_config gitconfig-wrk      "$HOME/.gitconfig-wrk"
+copy_config gitconfig-prs      "$HOME/.gitconfig-prs"
 copy_config terraformrc        "$HOME/.terraformrc"
 copy_config aws_config         "$HOME/.aws/config"
 copy_config ssh_config         "$HOME/.ssh/config" 600

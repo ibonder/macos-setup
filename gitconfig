@@ -1,16 +1,19 @@
+# No [user] name/email here on purpose. useConfigOnly makes git refuse to guess
+# an identity, and the includeIf blocks at the bottom supply the right one per
+# context — so a work commit can never accidentally carry a personal address, or
+# vice versa. The identities themselves live in gitconfig-wrk / gitconfig-prs.
 [user]
-	name = XXX XXX
-	email = XXX@example.com
+	useConfigOnly = true
 [core]
-	excludesfile = /Users/XXX/.gitignore_global
 	editor = nvim
-[commit]
-	template = /Users/XXX/.stCommitMsg
+	pager = less -FRX
 [alias]
 	s = status
 	b = branch
 	co = checkout
 	pr = pull --rebase
+	ci = commit
+	st = status
 
 	l = log -C --decorate
 	ls = log -C --stat --decorate
@@ -18,11 +21,15 @@
 	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 	slog = log --graph --all --topo-order --pretty='format:%h %ai %s%d (%an)'
 
-	co = checkout
-	b = branch
-	ci = commit
-	st = status
 	project-summary = !which onefetch && onefetch
+
+	# https://gist.github.com/aclarknexient/0ffcb98aa262c585c49d4b3f3ae24019#git
+	# Last 25 commits as a colourful tree
+	lol = !git --no-pager log --graph --decorate --abbrev-commit --all --date=local -25 --pretty=format:\"%C(auto)%h%d %C(blue)%an %C(green)%cd %C(red)%GG %C(reset)%s\"
+	# Pick changed files with fzf (TAB to toggle, ENTER to stage)
+	fza = "!git ls-files -m -o --exclude-standard | fzf -m --print0 | xargs -0 git add"
+	# Delete local branches whose remote is gone
+	gone = "!f() { git fetch --all --prune; git branch -vv | awk '/: gone]/{print $1}' | xargs git branch -D; }; f"
 [help]
 	autocorrect = 20
 [color]
@@ -30,3 +37,20 @@
 [push]
 	default = simple
 	followTags = true
+
+# Identity by remote URL — covers a repo cloned anywhere on disk. Both the https
+# and ssh forms are needed; git matches the literal remote string.
+[includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
+	path = ~/.gitconfig-wrk
+[includeIf "hasconfig:remote.*.url:git@git.example.com:**"]
+	path = ~/.gitconfig-wrk
+[includeIf "hasconfig:remote.*.url:https://github.com/XXX/**"]
+	path = ~/.gitconfig-prs
+[includeIf "hasconfig:remote.*.url:git@github.com:XXX/**"]
+	path = ~/.gitconfig-prs
+
+# Identity by location — the fallback for a repo with no remote yet.
+[includeIf "gitdir/i:~/Documents/wrk/company/"]
+	path = ~/.gitconfig-wrk
+[includeIf "gitdir/i:~/Documents/prs/"]
+	path = ~/.gitconfig-prs

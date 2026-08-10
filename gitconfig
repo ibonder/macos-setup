@@ -42,10 +42,14 @@
 	path = ~/.gitconfig-wrk
 
 # Work identity by remote URL — covers a work repo cloned anywhere on disk. Both
-# the https and ssh forms are needed; git matches the literal remote string.
+# the https and ssh forms are needed; git matches the literal remote string. In
+# the ssh form `**` only spans `/` as a whole path component, so `host:**` alone
+# matches only an ungrouped repo — `host:*/**` covers group/repo and deeper.
 [includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
 	path = ~/.gitconfig-wrk
 [includeIf "hasconfig:remote.*.url:git@git.example.com:**"]
+	path = ~/.gitconfig-wrk
+[includeIf "hasconfig:remote.*.url:git@git.example.com:*/**"]
 	path = ~/.gitconfig-wrk
 
 # A personal remote wins over both, so a personal repo kept under wrk/ still gets

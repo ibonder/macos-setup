@@ -32,6 +32,14 @@ FORCE="${FORCE:-0}"
 # served by its SSH agent. See README.md, "SSH keys and secrets".
 PRIVATE="${PRIVATE_DIR:-$HOME/.config/macos-setup/private}"
 
+# The overlay can also override settings the repo has to anonymise — notably a
+# directory name, which a filename-based overlay cannot express on its own.
+# Drop a `setup.conf` in the overlay with e.g. COMPANY_DIR=acme to have the env
+# file land in ~/.config/acme/env instead of ~/.config/company/env.
+# shellcheck source=/dev/null
+[ -f "$PRIVATE/setup.conf" ] && . "$PRIVATE/setup.conf"
+COMPANY_DIR="${COMPANY_DIR:-company}"
+
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m  %s\n' "$*" >&2; }
 skip() { printf '    already done: %s\n' "$*"; }
@@ -205,7 +213,7 @@ copy_config gitconfig          "$HOME/.gitconfig"
 copy_config terraformrc        "$HOME/.terraformrc"
 copy_config aws_config         "$HOME/.aws/config"
 copy_config ssh_config         "$HOME/.ssh/config" 600
-copy_config config_company/env "$HOME/.config/company/env" 600
+copy_config config_company/env "$HOME/.config/$COMPANY_DIR/env" 600
 
 # SSH private keys are deliberately untracked — restore them yourself.
 if [ -d "$HOME/.ssh" ]; then

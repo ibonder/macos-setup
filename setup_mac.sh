@@ -210,8 +210,8 @@ link_config config_nvim        "$HOME/.config/nvim"
 copy_config zshrc              "$HOME/.zshrc"
 copy_config bash_aliases       "$HOME/.bash_aliases"
 copy_config gitconfig          "$HOME/.gitconfig"
-# gitconfig sets useConfigOnly, so git refuses to commit until these two supply
-# an identity. Without them every commit fails with "unable to auto-detect email".
+# gitconfig unconditionally includes gitconfig-prs and switches to gitconfig-wrk
+# for work repos, so neither file is optional — a missing one leaves git guessing.
 copy_config gitconfig-wrk      "$HOME/.gitconfig-wrk"
 copy_config gitconfig-prs      "$HOME/.gitconfig-prs"
 copy_config terraformrc        "$HOME/.terraformrc"

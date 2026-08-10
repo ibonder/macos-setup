@@ -59,8 +59,8 @@ unset _company_kc _company_lines _company_user _company_pass
 # active — `just init` sets TF_CLI_CONFIG_FILE and ignores ~/.terraformrc.
 #
 # Create / rotate:
-#   security add-generic-password -U -s tf-registry -a '<registry-host>' -w
-_tf_kc=$(security find-generic-password -g -s tf-registry 2>&1)
+#   security add-generic-password -U -s company-tf-registry -a '<registry-host>' -w
+_tf_kc=$(security find-generic-password -g -s company-tf-registry 2>&1)
 if [[ -n $_tf_kc ]]; then
   _tf_lines=("${(f)_tf_kc}")
   _tf_host=${${(M)_tf_lines:#*\"acct\"<blob>=*}#*\"acct\"<blob>=\"}

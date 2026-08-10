@@ -34,7 +34,7 @@ The table below is the manual fallback if you use neither;
 | `config_company/env` | `~/.config/company/env` | Nothing in the file itself — it reads the credential from the macOS keychain. Create the item once: `security add-generic-password -U -s company-ldap -a '<your-ldap-username>' -w` (prompts for the password, so it never lands in argv or shell history). |
 | `aws_config` | `~/.aws/config` | `sso_start_url` (`https://xxx.awsapps.com/start`), every `sso_account_id` (12-digit account IDs), and the `sso_role_name` permission sets you're actually granted. |
 | `gitconfig` | `~/.gitconfig` | `user.name`, `user.email`, and the `/Users/XXX/` paths in `core.excludesfile` and `commit.template`. |
-| `ssh_config` | `~/.ssh/config` | `IdentityFile ~/.ssh/xxx.pub` (public-key filenames — the private halves stay in 1Password), `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. |
+| `ssh_config` | `~/.ssh/config` | The `id_ed25519_work` / `id_ed25519_personal` key names, `git.example.com` → your git host, `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. Key *filenames* are neither secret nor identifying, so these are descriptive rather than `xxx`. |
 | `terraformrc` | `~/.terraformrc` | Only the `network_mirror` URL, if you use a private registry mirror. **No token belongs in this file** — it comes from the keychain now. |
 | `zshrc` | `~/.zshrc` | Nothing secret. Rename `~/.config/company/` if you prefer another directory. |
 | `setup_mac.sh` | — | Nothing. It derives every path from its own location, so it needs no editing — see "Bootstrapping a fresh machine" below. |
@@ -121,15 +121,35 @@ hostnames, your name and email — go in a private overlay:
 
 ```
 ~/.config/macos-setup/private/
+├── setup.conf            # optional overrides, see below
 ├── aws_config
+├── bash_aliases
 ├── gitconfig
-└── ssh_config
+├── ssh_config
+├── terraformrc
+├── zshrc
+└── config_company/
+    └── env
 ```
 
-Use the **same filenames as the repo**. `setup_mac.sh` prefers a file found there
-over the tracked, anonymised copy and reports which one it used
+Use the **same filenames as the repo**, including the `config_company/`
+subdirectory. `setup_mac.sh` prefers a file found there over the tracked,
+anonymised copy and reports which one it used
 (`Installing ~/.gitconfig (from private)`). Anything absent falls back to the
 repo copy, and the script warns that placeholders remain.
+
+`setup.conf` is sourced before anything is installed, and exists for the one
+thing filenames cannot express — an anonymised **directory** name. The repo ships
+`config_company/env` destined for `~/.config/company/env`; if your real
+directory is named differently, say so there:
+
+```sh
+# ~/.config/macos-setup/private/setup.conf
+COMPANY_DIR=acme        # -> installs to ~/.config/acme/env
+```
+
+Without it the env file lands in `~/.config/company/env` while your real `zshrc`
+sources `~/.config/<yourname>/env`, and the keychain lookups silently never run.
 
 The overlay lives outside the repo on purpose: there is no `git add` that can
 reach it. Override the location with `PRIVATE_DIR=/some/path ./setup_mac.sh`.
@@ -137,10 +157,24 @@ reach it. Override the location with `PRIVATE_DIR=/some/path ./setup_mac.sh`.
 To seed it from what you already have on a working machine:
 
 ```sh
-mkdir -p ~/.config/macos-setup/private
-cp ~/.gitconfig ~/.aws/config ~/.ssh/config ~/.config/macos-setup/private/
-mv ~/.config/macos-setup/private/config ~/.config/macos-setup/private/aws_config
-chmod -R 600 ~/.config/macos-setup/private/*
+P=~/.config/macos-setup/private
+mkdir -p "$P/config_company"
+cp ~/.gitconfig    "$P/gitconfig"
+cp ~/.aws/config   "$P/aws_config"
+cp ~/.ssh/config   "$P/ssh_config"
+cp ~/.terraformrc  "$P/terraformrc"
+cp ~/.zshrc        "$P/zshrc"
+cp ~/.bash_aliases "$P/bash_aliases"
+cp ~/.config/<yourname>/env "$P/config_company/env"
+printf 'COMPANY_DIR=<yourname>\n' > "$P/setup.conf"
+chmod 700 "$P" "$P/config_company"; chmod 600 "$P"/* "$P/config_company"/*
+```
+
+Confirm it took effect — every config should report `already done`, and the
+header should name the overlay:
+
+```sh
+DRY_RUN=1 ./setup_mac.sh | grep -E 'already done|from private|overlay'
 ```
 
 Back it up somewhere private — a 1Password Document, or a private git repo. If

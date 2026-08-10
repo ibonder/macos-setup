@@ -33,7 +33,7 @@ The table below is the manual fallback if you use neither;
 | --- | --- | --- |
 | `config_company/env` | `~/.config/company/env` | Nothing in the file itself — it reads the credential from the macOS keychain. Create the item once: `security add-generic-password -U -s company-ldap -a '<your-ldap-username>' -w` (prompts for the password, so it never lands in argv or shell history). |
 | `aws_config` | `~/.aws/config` | `sso_start_url` (`https://xxx.awsapps.com/start`), every `sso_account_id` (12-digit account IDs), and the `sso_role_name` permission sets you're actually granted. |
-| `gitconfig` | `~/.gitconfig` | `git.example.com` → your git host, `github.com/XXX` → your GitHub user, and the `~/Documents/wrk/company/` path. Carries **no** identity itself — see the two files below. |
+| `gitconfig` | `~/.gitconfig` | `git.example.com` → your git host, `github.com/XXX` → your GitHub user, and the `~/Documents/wrk/` path. Carries **no** identity itself — see the two files below. |
 | `gitconfig-wrk` | `~/.gitconfig-wrk` | `user.name` / `user.email` for work. |
 | `gitconfig-prs` | `~/.gitconfig-prs` | `user.name` / `user.email` for personal repos. |
 | `ssh_config` | `~/.ssh/config` | The `id_ed25519_work` / `id_ed25519_personal` key names, `git.example.com` → your git host, `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. Key *filenames* are neither secret nor identifying, so these are descriptive rather than `xxx`. |
@@ -118,23 +118,23 @@ Inspect or rotate: `security find-generic-password -s tf-registry`, or re-run th
 
 ## Git identity split
 
-`gitconfig` deliberately contains no `user.name` or `user.email`. Instead it sets
-`useConfigOnly = true`, which makes git **refuse to commit** rather than guess an
-identity, and then selects one through `includeIf`:
+`gitconfig` carries no `user.name` or `user.email` itself. It includes
+`~/.gitconfig-prs` unconditionally — **personal is the default** — and then
+overrides it with `~/.gitconfig-wrk` for work repos, matched two ways:
 
+- **by directory** (`gitdir/i:~/Documents/wrk/`) — everything work-related lives
+  under `wrk/`, so this covers a work repo with no remote yet.
 - **by remote URL** (`hasconfig:remote.*.url:…`) — works wherever the repo lives
   on disk. Both the `https://` and `git@` forms are listed because git matches
   the literal remote string.
-- **by directory** (`gitdir/i:…`) — the fallback for a repo with no remote yet.
 
-Both point at `~/.gitconfig-wrk` or `~/.gitconfig-prs`, which hold the actual
-addresses. The payoff is that a work email can never land in a personal public
-repo, and the failure mode is a refused commit rather than a wrong one.
+A personal `github.com` remote is matched **last** and so wins over both, which
+keeps a personal repo parked under `wrk/` on the personal address. Git applies
+includes in file order, so reordering these blocks changes which identity wins.
 
-The catch: `useConfigOnly` means that if those two files are missing, **every
-commit fails** with "unable to auto-detect email address". `setup_mac.sh`
-installs both, but the tracked copies are `XXX` placeholders — so keep the real
-ones in the private overlay.
+`setup_mac.sh` installs both identity files, but the tracked copies are `XXX`
+placeholders — keep the real ones in the private overlay, or commits go out
+signed `XXX@example.com`.
 
 Check which identity a repo resolves to:
 

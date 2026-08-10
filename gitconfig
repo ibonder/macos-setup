@@ -1,9 +1,8 @@
-# No [user] name/email here on purpose. useConfigOnly makes git refuse to guess
-# an identity, and the includeIf blocks at the bottom supply the right one per
-# context — so a work commit can never accidentally carry a personal address, or
-# vice versa. The identities themselves live in gitconfig-wrk / gitconfig-prs.
-[user]
-	useConfigOnly = true
+# The personal identity is the default; the includeIf blocks at the bottom switch
+# to the work identity for work repos. Keeping the identities in gitconfig-wrk /
+# gitconfig-prs is what stops a work address landing in a public repo.
+[include]
+	path = ~/.gitconfig-prs
 [core]
 	editor = nvim
 	pager = less -FRX
@@ -38,19 +37,20 @@
 	default = simple
 	followTags = true
 
-# Identity by remote URL — covers a repo cloned anywhere on disk. Both the https
-# and ssh forms are needed; git matches the literal remote string.
+# Work identity by location — covers a work repo with no remote yet.
+[includeIf "gitdir/i:~/Documents/wrk/"]
+	path = ~/.gitconfig-wrk
+
+# Work identity by remote URL — covers a work repo cloned anywhere on disk. Both
+# the https and ssh forms are needed; git matches the literal remote string.
 [includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
 	path = ~/.gitconfig-wrk
 [includeIf "hasconfig:remote.*.url:git@git.example.com:**"]
 	path = ~/.gitconfig-wrk
+
+# A personal remote wins over both, so a personal repo kept under wrk/ still gets
+# the personal address. Last block listed = last one applied.
 [includeIf "hasconfig:remote.*.url:https://github.com/XXX/**"]
 	path = ~/.gitconfig-prs
 [includeIf "hasconfig:remote.*.url:git@github.com:XXX/**"]
-	path = ~/.gitconfig-prs
-
-# Identity by location — the fallback for a repo with no remote yet.
-[includeIf "gitdir/i:~/Documents/wrk/company/"]
-	path = ~/.gitconfig-wrk
-[includeIf "gitdir/i:~/Documents/prs/"]
 	path = ~/.gitconfig-prs

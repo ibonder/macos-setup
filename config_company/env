@@ -48,3 +48,29 @@ else
 fi
 
 unset _company_kc _company_lines _company_user _company_pass
+
+# --------------------------------------------------------------------------
+# Terraform module registry token
+# --------------------------------------------------------------------------
+# Kept in the keychain rather than as a `credentials` block in ~/.terraformrc,
+# so no plaintext token sits in a dotfile. The registry HOST is the item's
+# account field, and TF_TOKEN_<host> is derived from it (dots -> underscores),
+# which is the form terraform honours regardless of which CLI config file is
+# active — `just init` sets TF_CLI_CONFIG_FILE and ignores ~/.terraformrc.
+#
+# Create / rotate:
+#   security add-generic-password -U -s company-tf-registry -a '<registry-host>' -w
+_tf_kc=$(security find-generic-password -g -s company-tf-registry 2>&1)
+if [[ -n $_tf_kc ]]; then
+  _tf_lines=("${(f)_tf_kc}")
+  _tf_host=${${(M)_tf_lines:#*\"acct\"<blob>=*}#*\"acct\"<blob>=\"}
+  _tf_host=${_tf_host%\"}
+  _tf_token=${${(M)_tf_lines:#password: *}#password: \"}
+  _tf_token=${_tf_token%\"}
+
+  if [[ -n $_tf_host && -n $_tf_token ]]; then
+    export "TF_TOKEN_${_tf_host//./_}=$_tf_token"
+  fi
+fi
+
+unset _tf_kc _tf_lines _tf_host _tf_token

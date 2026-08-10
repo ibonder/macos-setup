@@ -1,0 +1,7 @@
+# Personal identity. Pulled in by the includeIf blocks in gitconfig, so it
+# applies only to repos on a personal remote or under the personal directory.
+# Keeping this separate is what stops a work email landing in a public repo.
+# The real copy belongs in the private overlay (see README.md).
+[user]
+	name = XXX XXX
+	email = XXX@example.com

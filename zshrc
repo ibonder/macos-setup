@@ -181,12 +181,19 @@ zsh-defer -c 'complete -o nospace -C /opt/homebrew/bin/terraform terraform'
 [[ -f ${HOME}/.iterm2_shell_integration.zsh ]] &&
   zsh-defer source "${HOME}/.iterm2_shell_integration.zsh"
 
-# Terraform module registry auth for git.example.com (added 2026-07-30)
-# just init sets TF_CLI_CONFIG_FILE=network-mirror.tfrc, which ignores ~/.terraformrc;
-# this env-var token is honored regardless of the active CLI config file.
-zsh-defer -c 'export TF_TOKEN_git_example_com=$(awk '\''/credentials "git.example.com"/{f=1} f&&/token/{gsub(/.*= *"|"/,"");print;exit}'\'' ~/.terraformrc 2>/dev/null)'
+# 1Password SSH agent. ssh itself picks this up from IdentityAgent in
+# ~/.ssh/config, but tools that read SSH_AUTH_SOCK directly — ssh-add, and
+# anything shelling out to an agent — need it in the environment too.
+# Guarded on the socket existing: exporting a path to a missing socket would
+# break ssh outright whenever 1Password is not running.
+_op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+[[ -S $_op_sock ]] && export SSH_AUTH_SOCK=$_op_sock
+unset _op_sock
 
-# LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_* (added 2026-08-03).
+# LDAP/SSO creds -> TF_VAR_ldap_*, CONFLUENCE_*, plus the Terraform registry
+# token -> TF_TOKEN_<host> (added 2026-08-03, registry token moved here
+# 2026-08-06 — it used to be awk'd out of ~/.terraformrc, one fork and one
+# plaintext secret ago).
 # +2 keeps stderr, so the "keychain item not found" hint is still visible.
 [[ -f ~/.config/company/env ]] && zsh-defer +2 source ~/.config/company/env
 

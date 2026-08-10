@@ -1,0 +1,7 @@
+# Work identity. Pulled in by the includeIf blocks in gitconfig, so it applies
+# only to repos on a work remote or under the work directory.
+# Never commit the real values to a public repo — the real copy belongs in the
+# private overlay (see README.md, "Filling in real values").
+[user]
+	name = XXX XXX
+	email = XXX@example.com

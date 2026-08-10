@@ -26,6 +26,20 @@ BACKUP="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
 DRY_RUN="${DRY_RUN:-0}"
 FORCE="${FORCE:-0}"
 
+# Real, un-anonymised configs go here — outside the repo, so there is no way to
+# git-commit them by accident. Any file present overrides the tracked copy of
+# the same name. Private keys do NOT belong here: they live in 1Password and are
+# served by its SSH agent. See README.md, "SSH keys and secrets".
+PRIVATE="${PRIVATE_DIR:-$HOME/.config/macos-setup/private}"
+
+# The overlay can also override settings the repo has to anonymise — notably a
+# directory name, which a filename-based overlay cannot express on its own.
+# Drop a `setup.conf` in the overlay with e.g. COMPANY_DIR=acme to have the env
+# file land in ~/.config/acme/env instead of ~/.config/company/env.
+# shellcheck source=/dev/null
+[ -f "$PRIVATE/setup.conf" ] && . "$PRIVATE/setup.conf"
+COMPANY_DIR="${COMPANY_DIR:-company}"
+
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m  %s\n' "$*" >&2; }
 skip() { printf '    already done: %s\n' "$*"; }
@@ -157,7 +171,12 @@ link_config() {
 }
 
 copy_config() {
-  local src="$REPO/$1" dest="$2" mode="${3:-644}"
+  local src="$REPO/$1" dest="$2" mode="${3:-644}" origin="repo"
+  # A real file in the private overlay wins over the anonymised tracked one.
+  if [ -f "$PRIVATE/$1" ]; then
+    src="$PRIVATE/$1"
+    origin="private"
+  fi
   if [ ! -f "$src" ]; then
     warn "missing in repo: $1"
     return
@@ -179,19 +198,26 @@ copy_config() {
     warn "backed up existing $dest"
   fi
   run mkdir -p "$(dirname "$dest")"
-  log "Installing $dest"
+  log "Installing $dest (from $origin)"
   run cp "$src" "$dest"
   run chmod "$mode" "$dest"
+  if [ "$origin" = repo ] && grep -qE 'xxx|XXX|example\.com' "$src" 2>/dev/null; then
+    warn "  ^ contains placeholders — see 'Filling in real values' in README.md"
+  fi
 }
 
 link_config config_nvim        "$HOME/.config/nvim"
 copy_config zshrc              "$HOME/.zshrc"
 copy_config bash_aliases       "$HOME/.bash_aliases"
 copy_config gitconfig          "$HOME/.gitconfig"
+# gitconfig sets useConfigOnly, so git refuses to commit until these two supply
+# an identity. Without them every commit fails with "unable to auto-detect email".
+copy_config gitconfig-wrk      "$HOME/.gitconfig-wrk"
+copy_config gitconfig-prs      "$HOME/.gitconfig-prs"
 copy_config terraformrc        "$HOME/.terraformrc"
 copy_config aws_config         "$HOME/.aws/config"
 copy_config ssh_config         "$HOME/.ssh/config" 600
-copy_config config_company/env "$HOME/.config/company/env" 600
+copy_config config_company/env "$HOME/.config/$COMPANY_DIR/env" 600
 
 # SSH private keys are deliberately untracked — restore them yourself.
 if [ -d "$HOME/.ssh" ]; then
@@ -212,22 +238,40 @@ fi
 # --------------------------------------------------------------------------
 # What still needs a human
 # --------------------------------------------------------------------------
+echo
+log "Bootstrap finished. Remaining manual steps:"
 cat <<'EOF'
 
-==> Bootstrap finished. Remaining manual steps:
+  1. SSH keys — turn on the 1Password agent:
+       1Password > Settings > Developer > "Use the SSH agent"
+     Store each key as an SSH Key item there. Private keys never touch disk;
+     ~/.ssh/config already points at the agent socket. Verify with:
+       ssh-add -l
 
-  1. Fill in the placeholders. Find every one with:
-       grep -rn 'xxx\|XXX\|example\.com' ~/.zshrc ~/.gitconfig ~/.terraformrc \
-            ~/.aws/config ~/.ssh/config
-     The README table says what each value should be.
+  2. Secrets into the keychain (nothing lands in a dotfile or shell history):
+       security add-generic-password -U -s company-ldap -a '<ldap-user>' -w
+       security add-generic-password -U -s tf-registry  -a '<registry-host>' -w
 
-  2. Restore SSH private keys into ~/.ssh (never tracked in this repo).
+  3. Sign in to the App Store, then re-run so the `mas` entries install.
 
-  3. Store the LDAP password in the keychain:
-       security add-generic-password -U -s company-ldap -a '<user>' -w
-
-  4. Sign in to the App Store, then re-run so the `mas` entries install.
-
-  5. First `nvim` launch bootstraps lazy.nvim and the language servers.
+  4. First `nvim` launch bootstraps lazy.nvim and the language servers.
 
 EOF
+
+if [ -d "$PRIVATE" ]; then
+  log "Private overlay in use: $PRIVATE"
+else
+  cat <<EOF
+  5. Configs with real values (AWS account IDs, hostnames, your name/email) are
+     NOT in this public repo. Put real copies in
+
+       $PRIVATE/
+
+     using the same filenames as the repo — aws_config, gitconfig, ssh_config.
+     Anything there overrides the anonymised copy on the next run. It sits
+     outside the repo, so it cannot be committed by accident.
+     Until then, fill the placeholders in by hand:
+       grep -rn 'xxx\|XXX\|example\.com' ~/.zshrc ~/.gitconfig ~/.aws/config ~/.ssh/config
+
+EOF
+fi

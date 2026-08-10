@@ -15,17 +15,30 @@ This repo is personal, but anonymised and may be useful to others. It contains m
 ## Personal data to fill in
 
 Everything secret or identifying is replaced with `xxx` / `example.com` / `XXX`.
-**No real credentials are tracked here.** After copying a file into place, work
-through the list below — `grep -rn 'xxx\|XXX\|example\.com' .` finds every spot.
+**No real credentials are tracked here.**
+
+There are two ways to get real values in place, and they cover different things:
+
+- **Secrets** — SSH private keys and API tokens — never go in a file at all.
+  Keys live in 1Password and tokens in the macOS keychain. See
+  [SSH keys and secrets](#ssh-keys-and-secrets).
+- **Private-but-not-secret identifiers** — AWS account IDs, internal hostnames,
+  your name and email — go in a private overlay directory outside this repo. See
+  [Filling in real values](#filling-in-real-values).
+
+The table below is the manual fallback if you use neither;
+`grep -rn 'xxx\|XXX\|example\.com' .` finds every spot.
 
 | File | Destination | What to replace |
 | --- | --- | --- |
 | `config_company/env` | `~/.config/company/env` | Nothing in the file itself — it reads the credential from the macOS keychain. Create the item once: `security add-generic-password -U -s company-ldap -a '<your-ldap-username>' -w` (prompts for the password, so it never lands in argv or shell history). |
 | `aws_config` | `~/.aws/config` | `sso_start_url` (`https://xxx.awsapps.com/start`), every `sso_account_id` (12-digit account IDs), and the `sso_role_name` permission sets you're actually granted. |
-| `gitconfig` | `~/.gitconfig` | `user.name`, `user.email`, and the `/Users/XXX/` paths in `core.excludesfile` and `commit.template`. |
-| `ssh_config` | `~/.ssh/config` | `IdentityFile ~/.ssh/xxx` (key filenames), `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. |
-| `terraformrc` | `~/.terraformrc` | The `network_mirror` URL if you use a private registry mirror, plus a `credentials "git.example.com"` block holding your module-registry token (read by `TF_TOKEN_git_example_com` in `zshrc`). |
-| `zshrc` | `~/.zshrc` | `git.example.com` → your module registry host, in both the `TF_TOKEN_*` variable name (dots become underscores) and the `awk` pattern. Rename `~/.config/company/` if you prefer another directory. |
+| `gitconfig` | `~/.gitconfig` | `git.example.com` → your git host, `github.com/XXX` → your GitHub user, and the `~/Documents/wrk/company/` path. Carries **no** identity itself — see the two files below. |
+| `gitconfig-wrk` | `~/.gitconfig-wrk` | `user.name` / `user.email` for work. |
+| `gitconfig-prs` | `~/.gitconfig-prs` | `user.name` / `user.email` for personal repos. |
+| `ssh_config` | `~/.ssh/config` | The `id_ed25519_work` / `id_ed25519_personal` key names, `git.example.com` → your git host, `HostName xxx.xxx.xxx.xxx` per host block, and the default `User xxx` in the `Host *` ruleset. Key *filenames* are neither secret nor identifying, so these are descriptive rather than `xxx`. |
+| `terraformrc` | `~/.terraformrc` | Only the `network_mirror` URL, if you use a private registry mirror. **No token belongs in this file** — it comes from the keychain now. |
+| `zshrc` | `~/.zshrc` | Nothing secret. Rename `~/.config/company/` if you prefer another directory. |
 | `setup_mac.sh` | — | Nothing. It derives every path from its own location, so it needs no editing — see "Bootstrapping a fresh machine" below. |
 
 Not tracked on purpose:
@@ -55,6 +68,184 @@ first. That makes a plain run safe on a machine that is already set up.
 
 It finishes by printing what still needs a human: filling in placeholders,
 restoring SSH private keys, and the keychain entry.
+
+## SSH keys and secrets
+
+**No private key is stored in this repo, in the private overlay, or anywhere on
+disk.** Keys live in 1Password; its SSH agent serves them to `ssh` over a socket.
+`ssh_config` is already wired to that agent, so a rebuild needs no key files
+restored from anywhere.
+
+One-time setup:
+
+1. In 1Password: **Settings → Developer → "Use the SSH agent"**.
+2. Add each key as an **SSH Key** item (paste the private key; 1Password derives
+   the public half). Do this before wiping the old machine.
+3. Open a new shell, then confirm the agent is serving them:
+
+   ```sh
+   ssh-add -l          # lists keys held by 1Password
+   ssh -T git@github.com
+   ```
+
+   `ssh` finds the agent via `IdentityAgent` in `ssh_config`, but `ssh-add` only
+   reads `SSH_AUTH_SOCK` — `zshrc` exports that, guarded on the socket existing,
+   so both work. If `ssh-add -l` says "error fetching identities", the agent is
+   not enabled yet or 1Password is not running.
+
+Every `IdentityFile` in `ssh_config` points at a **public** key. That is
+deliberate: `ssh` reads the `.pub` only to decide which key to request from the
+agent, and public keys are not secret. `IdentitiesOnly yes` stops it offering
+every key to every host. There is no `AddKeysToAgent`/`UseKeychain` — both manage
+on-disk keys, and the 1Password agent rejects additions.
+
+Tokens go in the login keychain, never in a dotfile. `config_company/env` reads
+both at shell start:
+
+```sh
+security add-generic-password -U -s company-ldap -a '<ldap-username>'  -w
+security add-generic-password -U -s tf-registry  -a '<registry-host>'  -w
+```
+
+Omitting the value after `-w` makes `security` prompt, so the secret never
+reaches argv or shell history. For `tf-registry` the **account field is the
+registry hostname**, and `TF_TOKEN_<host>` is derived from it with dots turned
+into underscores — the env-var form Terraform honours even when `just init`
+points `TF_CLI_CONFIG_FILE` away from `~/.terraformrc`.
+
+Inspect or rotate: `security find-generic-password -s tf-registry`, or re-run the
+`add` with `-U` to overwrite.
+
+## Git identity split
+
+`gitconfig` deliberately contains no `user.name` or `user.email`. Instead it sets
+`useConfigOnly = true`, which makes git **refuse to commit** rather than guess an
+identity, and then selects one through `includeIf`:
+
+- **by remote URL** (`hasconfig:remote.*.url:…`) — works wherever the repo lives
+  on disk. Both the `https://` and `git@` forms are listed because git matches
+  the literal remote string.
+- **by directory** (`gitdir/i:…`) — the fallback for a repo with no remote yet.
+
+Both point at `~/.gitconfig-wrk` or `~/.gitconfig-prs`, which hold the actual
+addresses. The payoff is that a work email can never land in a personal public
+repo, and the failure mode is a refused commit rather than a wrong one.
+
+The catch: `useConfigOnly` means that if those two files are missing, **every
+commit fails** with "unable to auto-detect email address". `setup_mac.sh`
+installs both, but the tracked copies are `XXX` placeholders — so keep the real
+ones in the private overlay.
+
+Check which identity a repo resolves to:
+
+```sh
+git -C <repo> config user.email
+```
+
+## Filling in real values
+
+Identifiers that are private but not secret — AWS account IDs, internal
+hostnames, your name and email — go in a private overlay:
+
+```
+~/.config/macos-setup/private/
+├── setup.conf            # optional overrides, see below
+├── aws_config
+├── bash_aliases
+├── gitconfig
+├── gitconfig-prs         # real personal identity
+├── gitconfig-wrk         # real work identity
+├── ssh_config
+├── terraformrc
+├── zshrc
+└── config_company/
+    └── env
+```
+
+Use the **same filenames as the repo**, including the `config_company/`
+subdirectory. `setup_mac.sh` prefers a file found there over the tracked,
+anonymised copy and reports which one it used
+(`Installing ~/.gitconfig (from private)`). Anything absent falls back to the
+repo copy, and the script warns that placeholders remain.
+
+`setup.conf` is sourced before anything is installed, and exists for the one
+thing filenames cannot express — an anonymised **directory** name. The repo ships
+`config_company/env` destined for `~/.config/company/env`; if your real
+directory is named differently, say so there:
+
+```sh
+# ~/.config/macos-setup/private/setup.conf
+COMPANY_DIR=acme        # -> installs to ~/.config/acme/env
+```
+
+Without it the env file lands in `~/.config/company/env` while your real `zshrc`
+sources `~/.config/<yourname>/env`, and the keychain lookups silently never run.
+
+The overlay lives outside the repo on purpose: there is no `git add` that can
+reach it. Override the location with `PRIVATE_DIR=/some/path ./setup_mac.sh`.
+
+To seed it from what you already have on a working machine:
+
+```sh
+P=~/.config/macos-setup/private
+mkdir -p "$P/config_company"
+cp ~/.gitconfig    "$P/gitconfig"
+cp ~/.aws/config   "$P/aws_config"
+cp ~/.ssh/config   "$P/ssh_config"
+cp ~/.terraformrc  "$P/terraformrc"
+cp ~/.zshrc        "$P/zshrc"
+cp ~/.bash_aliases "$P/bash_aliases"
+cp ~/.config/<yourname>/env "$P/config_company/env"
+printf 'COMPANY_DIR=<yourname>\n' > "$P/setup.conf"
+chmod 700 "$P" "$P/config_company"; chmod 600 "$P"/* "$P/config_company"/*
+```
+
+Confirm it took effect — every config should report `already done`, and the
+header should name the overlay:
+
+```sh
+DRY_RUN=1 ./setup_mac.sh | grep -E 'already done|from private|overlay'
+```
+
+Back it up somewhere private — a 1Password Document, or a private git repo. If
+you ever put it under git, keep it in a **separate private repository**; a
+`private/` directory inside this public one is one `git add -f` away from a leak
+(`.gitignore` guards against it, but do not rely on that alone).
+
+## What to back up
+
+Everything in this repo is public and reproducible. Three things are not, and a
+rebuild needs all three:
+
+**1. The private overlay** — one zip, stored as a 1Password Document:
+
+```sh
+cd ~/.config/macos-setup && zip -r ~/Desktop/macos-private.zip private
+```
+
+**2. Public keys** — `~/.ssh/*.pub`. These are not secret, but they are *not*
+fully reproducible either: `ssh-add -L` returns only some of the keys the agent
+actually serves (2 of 4 on this machine, verified), so do not rely on
+regenerating them. `ssh_config` pins them with `IdentitiesOnly`, and a missing
+`.pub` means that host stops authenticating. Include them in the same zip:
+
+```sh
+cd ~/.ssh && zip ~/Desktop/macos-private.zip *.pub known_hosts
+```
+
+**3. Keychain secrets** — these are *not* in the zip and must each become their
+own 1Password item, because the login keychain does not travel:
+
+| Keychain service | Holds | Recreate with |
+| --- | --- | --- |
+| `company-ldap` | LDAP password (account field = username) | `security add-generic-password -U -s company-ldap -a '<user>' -w` |
+| `company-tf-registry` | Terraform registry token (account field = host) | `security add-generic-password -U -s company-tf-registry -a '<host>' -w` |
+| `company-ansible-vault` | ansible-vault password | same pattern |
+| `glab:<git-host>:token` | glab PAT — written by `glab auth login` | re-run `glab auth login` |
+
+Deliberately **not** worth backing up, all regenerable: `~/.kube/config`
+(`aws eks update-kubeconfig`), `~/.aws/sso/cache`, `~/.terraform.d/plugin-cache`,
+and Homebrew itself.
 
 ## How apps get installed
 

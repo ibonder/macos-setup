@@ -1,1 +1,10 @@
 .DS_Store
+
+# The private overlay is meant to live at ~/.config/macos-setup/private, outside
+# this repo. These patterns are belt-and-braces in case a copy ever lands here.
+private/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+!id_ed25519*.pub

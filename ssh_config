@@ -1,24 +1,60 @@
+# Private keys live in 1Password and are served by its agent (see Host * below).
+# Only .pub files remain on disk; ssh reads those to decide which key to ask the
+# agent for, so an IdentityFile here may name a key whose private half is not
+# present. See README.md, "SSH keys and secrets".
+#
+# IdentitiesOnly pins exactly one key per host, making each connection a single
+# auth attempt. Without it ssh offers every key the agent holds until one is
+# accepted, and each rejected offer is a logged auth failure on the server.
+#
+# Do NOT move IdentitiesOnly into `Host *`: with no IdentityFile in scope it
+# resolves to "offer nothing", and every host not listed here stops
+# authenticating. Verified — it offers 0 keys and fails.
+#
+# There is also deliberately no AddKeysToAgent/UseKeychain: both manage on-disk
+# private keys, of which there are none, and the 1Password agent rejects
+# additions. UpdateHostKeys is omitted because `yes` is already the default in
+# OpenSSH 8.5+.
+
+Include ~/.colima/ssh_config
+
+Host git.example.com
+  PreferredAuthentications publickey
+  IdentitiesOnly yes
+  IdentityFile ~/.ssh/id_ed25519_work
+
+# Deliberately no IdentitiesOnly: this pattern covers hosts that are not listed
+# individually, so the work key is offered first while the agent's other keys
+# stay available as a fallback.
+Host *.example.com !git.example.com
+  Port 522
+  IdentityFile ~/.ssh/id_ed25519_work
+
 # https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port#enabling-ssh-connections-over-https
 Host github.com
   HostName ssh.github.com
   Port 443
   User git
-  UpdateHostKeys yes
-  IdentityFile ~/.ssh/xxx
+  IdentitiesOnly yes
+  IdentityFile ~/.ssh/id_ed25519_personal
 
-# Some group of hosts
-Host example-1
-  HostName xxx.xxx.xxx.xxx
+# Shared settings once, then just the address per host. ssh merges every
+# matching block, so adding a host is two lines instead of five.
+Host node-*
   User ubuntu
   IdentitiesOnly yes
-  IdentityFile ~/.ssh/id_ed25519
+  IdentityFile ~/.ssh/id_ed25519_personal
+
+Host node-1
+  HostName xxx.xxx.xxx.xxx
+Host node-2
+  HostName xxx.xxx.xxx.xxx
 
 # Main wildcard ruleset
 Host *
   User xxx
-  AddKeysToAgent yes
-  UseKeychain yes
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
   ServerAliveInterval 60
-  ChallengeResponseAuthentication no
+  KbdInteractiveAuthentication no
   StrictHostKeyChecking accept-new
   ExitOnForwardFailure yes

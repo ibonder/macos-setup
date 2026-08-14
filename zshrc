@@ -150,8 +150,10 @@ export TERRAGRUNT_PROVIDER_CACHE_DIR="${HOME}/.terraform.d/plugins-cache"
 # export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
 # --- PATH ------------------------------------------------------------------
-# Later entries win. /opt/homebrew/bin needs no line here: /etc/paths.d/homebrew
-# already puts it on PATH for every shell.
+# Later entries win. /etc/paths.d/homebrew does put /opt/homebrew/bin on PATH,
+# but path_helper appends paths.d *after* /etc/paths, so /usr/bin shadowed brew's
+# bash 5 with Apple's bash 3.2. `typeset -U path` above drops the later dupe.
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"

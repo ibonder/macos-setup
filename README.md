@@ -438,9 +438,13 @@ break or slow down:
 - **No `$(go env GOPATH)`** — that forked `go` on every startup (~10ms) to
   produce `$HOME/go`. Hardcoded as `${GOPATH:-$HOME/go}`, and *appended* to
   PATH, not prepended, so go-installed tools don't shadow brew/asdf ones.
-- **No `PATH="/opt/homebrew/bin:$PATH"`** — `/etc/paths.d/homebrew` already puts
-  it on PATH for every shell, so that line only created a duplicate entry.
-  `typeset -U path PATH` keeps the rest deduplicated.
+- **`PATH="/opt/homebrew/bin:$PATH"` is required**, despite
+  `/etc/paths.d/homebrew`. `path_helper` appends `paths.d` entries *after* the
+  `/etc/paths` list, so `/usr/bin` ended up ahead of Homebrew and `bash`
+  resolved to Apple's 3.2 instead of brew's 5.x — enough to break any script
+  using `declare -A`. Prepended *first* in the PATH block so `.local/bin`,
+  libpq, asdf shims, ruby and krew still win over Homebrew; `typeset -U path
+  PATH` drops the duplicate `path_helper` adds later.
 - **No manual `bashcompinit`.** oh-my-zsh's `lib/completion.zsh` already runs
   it, so the `complete -C ... terraform` registration works without it.
 - **No `source <(kubectl completion zsh)`.** The oh-my-zsh `kubectl` plugin
